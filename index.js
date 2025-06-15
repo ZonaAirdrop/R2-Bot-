@@ -3308,5 +3308,5 @@ screen.key(["C-down"], () => { logsBox.scroll(1); safeRender(); });
 
 safeRender();
 mainMenu.focus();
-addLog("Dont Forget To Subscribe YT And Telegram @YETIDAO!!", "system");
+addLog("Join Telegram ZONA AIRDROP For get update https://t.me/ZonaAirdr0p!!", "system");
 updateWelcomeBox();
