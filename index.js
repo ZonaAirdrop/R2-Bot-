@@ -1249,7 +1249,6 @@ function updateWelcomeBox() {
     `{center}{bold}{bright-red-fg}[:: R2 :: AUTO :: BOT ::]{/bright-red-fg}{/bold}{/center}\n\n` +
     `{center}{bold}{bright-yellow-fg}Version : ${botVersion}{/bright-yellow-fg}{/bold}{/center}\n` +
     `{center}{bold}{bright-cyan-fg}➥ Join Telegram : t.me/ZonaAirdr0p{/bright-cyan-fg}{/bold}{/center}\n` +
-    `{center}{bold}{grey-fg}Donate : saweria.co/vinsenzo{/grey-fg}{/bold}{/center}\n`;
 
   welcomeBox.setContent(content);
   safeRender();
