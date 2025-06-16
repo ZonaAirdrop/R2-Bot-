@@ -112,4 +112,7 @@ The maintainers are **not responsible** for any loss, damage, or misuse caused b
 
 > By using this bot, you agree that you understand the risks associated with blockchain automation, including but not limited to transaction fees, delays, and unexpected behavior due to network congestion or smart contract changes.
 
+📝 Note: 
+- Token Discord Optional it's only for Automatic Claim Faucet. Not filling it is no problem 
+
 For Get Update Join (Optional) https://t.me/ZonaAirdr0p
