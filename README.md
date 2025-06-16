@@ -23,3 +23,63 @@
 
 📦 8. Continuous Farming Mode
     → Can run in an endless loop mode for recurring farming or claiming tasks.
+
+Tentu! Berikut versi **bahasa Inggris lengkap dan rapi** dari instruksi setup dan run bot dari repo `https://github.com/ZonaAirdrop/R2-Bot-` — sangat cocok untuk dokumentasi GitHub `README.md` atau panduan teknis:
+
+---
+
+## 🚀 How to Run `R2-Bot` (Step-by-Step)
+
+These are the complete and separated commands to run the bot from the [ZonaAirdrop/R2-Bot](https://github.com/ZonaAirdrop/R2-Bot-) repository (assuming you have access to it):
+
+---
+
+### 🌐 1. Clone the Repository
+
+```bash
+git clone https://github.com/ZonaAirdrop/R2-Bot-.git
+```
+
+---
+
+### 📁 2. Navigate into the Project Directory
+
+```bash
+cd R2-Bot-
+```
+
+---
+
+### 📦 3. Install Dependencies
+
+```bash
+npm install
+```
+
+---
+
+### 📝 4. Create and Configure the `.env` File
+
+If a `.env` file is not present, create one:
+
+```bash
+cp .env.example .env
+```
+
+Then open and fill in the required environment variables:
+
+```env
+PRIVATE_KEY=0x...         # Replace with your actual private key
+RPC_URL=https://...       # Replace with your actual RPC endpoint
+DISCORD_TOKEN=...         # Optional, if used
+```
+
+---
+
+### 🚀 5. Start the Bot
+
+You can usually start the bot with:
+
+```bash
+npm start
+```
