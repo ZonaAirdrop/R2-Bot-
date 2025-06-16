@@ -82,3 +82,33 @@ You can usually start the bot with:
 ```bash
 npm start
 ```
+
+
+## 🔐 Security Notice
+
+> **Always prioritize the security of your private key and RPC endpoints.**
+> This bot interacts with blockchain networks and performs automated transactions, so improper handling of sensitive credentials can lead to irreversible asset loss.
+
+---
+
+### ⚠️ Best Practices
+
+```
+🔒 1. Never share your `.env` file or private key with anyone.
+🔒 2. Always use a testnet wallet (e.g., Sepolia, Goerli) when testing this bot.
+🔒 3. Keep your `.env` file out of version control by adding it to `.gitignore`.
+🔒 4. Use proxy or VPN if necessary, especially when using public RPCs or handling multiple wallets.
+🔒 5. Rotate or regenerate private keys periodically to reduce exposure risk.
+🔒 6. Double-check contract addresses and RPC endpoints before deployment.
+🔒 7. Use this tool only on trusted environments (your local device or a secure VPS).
+```
+
+---
+
+### 🚫 Disclaimer
+
+This software is provided for **educational and testing purposes only**.
+The maintainers are **not responsible** for any loss, damage, or misuse caused by the use of this tool.
+
+> By using this bot, you agree that you understand the risks associated with blockchain automation, including but not limited to transaction fees, delays, and unexpected behavior due to network congestion or smart contract changes.
+
