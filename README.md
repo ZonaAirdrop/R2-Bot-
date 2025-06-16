@@ -63,14 +63,13 @@ npm install
 If a `.env` file is not present, create one:
 
 ```bash
-cp .env.example .env
+nano .env
 ```
 
 Then open and fill in the required environment variables:
 
 ```env
 PRIVATE_KEY=0x...         # Replace with your actual private key
-RPC_URL=https://...       # Replace with your actual RPC endpoint
 DISCORD_TOKEN=...         # Optional, if used
 ```
 
