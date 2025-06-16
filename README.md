@@ -24,9 +24,6 @@
 📦 8. Continuous Farming Mode
     → Can run in an endless loop mode for recurring farming or claiming tasks.
 
-Tentu! Berikut versi **bahasa Inggris lengkap dan rapi** dari instruksi setup dan run bot dari repo `https://github.com/ZonaAirdrop/R2-Bot-` — sangat cocok untuk dokumentasi GitHub `README.md` atau panduan teknis:
-
----
 
 ## 🚀 How to Run `R2-Bot` (Step-by-Step)
 
