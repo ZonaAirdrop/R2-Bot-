@@ -112,3 +112,4 @@ The maintainers are **not responsible** for any loss, damage, or misuse caused b
 
 > By using this bot, you agree that you understand the risks associated with blockchain automation, including but not limited to transaction fees, delays, and unexpected behavior due to network congestion or smart contract changes.
 
+For Get Update Join (Optional) https://t.me/ZonaAirdr0p
