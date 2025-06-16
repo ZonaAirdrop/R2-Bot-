@@ -1,3 +1,5 @@
+📦 Full Feature Overview – R2-Bot
+
 📦 1. Auto Faucet Claim
     → Automatically claims R2/USD tokens from a testnet faucet or smart contract.
 
