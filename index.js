@@ -5,11 +5,21 @@ import { ethers } from "ethers";
 import axios from "axios";
 import FormData from "form-data";
 
-// Configuration
-const RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com/";
-const initialProvider = new ethers.JsonRpcProvider(process.env.RPC_URL);
-const initialWallet = new ethers.Wallet(process.env.PRIVATE_KEY, initialProvider);
-const wallet_address = initialWallet.address;
+// Load from .env
+const RPC_URL = process.env.RPC_URL;
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
+
+// Check for required environment variables
+if (!RPC_URL || !PRIVATE_KEY) {
+  console.error("❌ Missing RPC_URL or PRIVATE_KEY in .env file");
+  process.exit(1);
+}
+
+const provider = new ethers.JsonRpcProvider(RPC_URL);
+const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
+const wallet_address = wallet.address;
+
+console.log("✅ Wallet address:", wallet_address);
 
 const CONFIG = {
   RPC_URL: SEPOLIA_RPC,
