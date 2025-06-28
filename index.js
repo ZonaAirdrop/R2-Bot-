@@ -587,6 +587,7 @@ async function main() {
 
   screen.append(walletBox);
   screen.append(menu);
+menu.focus();  // Auto-focus so menu is responsive
   screen.append(logBox);
   screen.render();
 
