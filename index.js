@@ -3,18 +3,13 @@ import blessed from "blessed";
 import figlet from "figlet";
 import { ethers } from "ethers";
 
-// Load configuration from .env
-const RPC_URL = process.env.RPC_URL;
+// Configuration Constants
+const RPC_URL = process.env.RPC_URL || "https://sepolia.infura.io/v3/ef659d824bd14ae798d965f855f2cfd6";
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
-// Validate required environment variables
+// Validate environment variables
 if (!PRIVATE_KEY) {
-  console.error("❌ Error: Missing PRIVATE_KEY in .env file");
-  process.exit(1);
-}
-
-if (!RPC_URL) {
-  console.error("❌ Error: Missing RPC_URL in .env file");
+  console.error("❌ Error: PRIVATE_KEY is required in .env file");
   process.exit(1);
 }
 
@@ -22,7 +17,6 @@ if (!RPC_URL) {
 const provider = new ethers.JsonRpcProvider(RPC_URL);
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
-// Display initialization info
 console.log("✅ Wallet initialized:", wallet.address);
 console.log("🔗 Connected to RPC:", RPC_URL);
 
