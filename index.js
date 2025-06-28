@@ -3,22 +3,22 @@ import blessed from "blessed";
 import figlet from "figlet";
 import { ethers } from "ethers";
 
-// Configuration Constants
-const RPC_URL = process.env.RPC_URL || "https://sepolia.infura.io/v3/ef659d824bd14ae798d965f855f2cfd6";
+const RPC_URL = process.env.RPC_URL || "https://sepolia.infura.io/v3/ef659d824bd14ae798d965f855f2cfd6"; 
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
-// Validate environment variables
+// STRICT VALIDATION
 if (!PRIVATE_KEY) {
-  console.error("❌ Error: PRIVATE_KEY is required in .env file");
+  console.error("🛑 CRITICAL: Missing PRIVATE_KEY in .env");
   process.exit(1);
 }
 
-// Initialize Ethereum provider and wallet
+// INITIALIZE PROVIDER AND WALLET
 const provider = new ethers.JsonRpcProvider(RPC_URL);
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
-console.log("✅ Wallet initialized:", wallet.address);
-console.log("🔗 Connected to RPC:", RPC_URL);
+// VERIFIED CONNECTION INFO
+console.log("✅ ACTIVE WALLET:", wallet.address);
+console.log("🌐 NETWORK ENDPOINT:", RPC_URL);
 
 const CONFIG = {
   RPC_URL: SEPOLIA_RPC,
