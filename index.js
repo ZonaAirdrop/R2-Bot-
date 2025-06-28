@@ -2,6 +2,8 @@ import "dotenv/config";
 import blessed from "blessed";
 import figlet from "figlet";
 import { ethers } from "ethers";
+import axios from "axios";
+import FormData from "form-data";
 
 // Configuration
 const SEPOLIA_RPC = "https://sepolia.infura.io/v3/ef659d824bd14ae798d965f855f2cfd6";
