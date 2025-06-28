@@ -51,8 +51,9 @@ const STAKING_ABI = [
   "function withdraw(uint256 amount) external"
 ];
 
+console.log(wallet.address);
+
 let walletInfo = {
-  console.log(wallet.address);
   balances: {
     native: "0",
     USDC: "0",
