@@ -1,22 +1,31 @@
-
 import "dotenv/config";
 import blessed from "blessed";
 import figlet from "figlet";
 import { ethers } from "ethers";
 
-const RPC_URL = process.env.RPC_URL || "https://sepolia.infura.io/v3/ef659d824bd14ae798d965f855f2cfd6";
+// Load configuration from .env
+const RPC_URL = process.env.RPC_URL;
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
+// Validate required environment variables
 if (!PRIVATE_KEY) {
-  console.error("❌ Error: PRIVATE_KEY tidak ditemukan di .env");
+  console.error("❌ Error: Missing PRIVATE_KEY in .env file");
   process.exit(1);
 }
 
+if (!RPC_URL) {
+  console.error("❌ Error: Missing RPC_URL in .env file");
+  process.exit(1);
+}
+
+// Initialize Ethereum provider and wallet
 const provider = new ethers.JsonRpcProvider(RPC_URL);
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
-console.log("✅ Wallet address:", wallet.address);
-console.log("🔗 RPC Provider:", RPC_URL);
+// Display initialization info
+console.log("✅ Wallet initialized:", wallet.address);
+console.log("🔗 Connected to RPC:", RPC_URL);
+
 const CONFIG = {
   RPC_URL: SEPOLIA_RPC,
   USDC_ADDRESS: "0xc7BcCf452965Def7d5D9bF02943e3348F758D3CB",
