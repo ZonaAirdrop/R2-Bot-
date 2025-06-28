@@ -5,12 +5,12 @@ import { ethers } from "ethers";
 import axios from "axios";
 import FormData from "form-data";
 
-// Ambil dari .env
+// Ambil konfigurasi dari .env
 const RPC_URL = process.env.RPC_URL;
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
 if (!RPC_URL || !PRIVATE_KEY) {
-  console.error("❌ ENV variable missing. Pastikan RPC_URL dan PRIVATE_KEY ada di .env");
+  console.error("❌ .env tidak lengkap: pastikan ada RPC_URL dan PRIVATE_KEY");
   process.exit(1);
 }
 
@@ -19,6 +19,8 @@ const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 const wallet_address = wallet.address;
 
 console.log("✅ Wallet address:", wallet_address);
+
+// ... lanjutkan bot kamu di bawah sini ...
 
 const CONFIG = {
   RPC_URL: SEPOLIA_RPC,
