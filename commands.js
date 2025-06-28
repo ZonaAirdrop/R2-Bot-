@@ -1,3 +1,4 @@
+const { ethers } = require("ethers");
 import { createWallet, getBalance } from './services.js';
 import { log, logDivider } from './logger.js';
 
