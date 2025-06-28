@@ -5,7 +5,7 @@ import { ethers } from "ethers";
 
 // Configuration
 const SEPOLIA_RPC = "https://sepolia.infura.io/v3/ef659d824bd14ae798d965f855f2cfd6";
-const initialProvider = new ethers.JsonRpcProvider(SEPOLIA_RPC);
+const initialProvider = new ethers.providers.JsonRpcProvider(SEPOLIA_RPC);
 const initialWallet = new ethers.Wallet(process.env.PRIVATE_KEY, initialProvider);
 
 const CONFIG = {
