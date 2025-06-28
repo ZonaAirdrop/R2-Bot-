@@ -434,7 +434,8 @@ async function executeDepositBTC(amount, times, minDelay, maxDelay) {
 // UI Functions
 function showMainMenu() {
   menuBox.setItems([
-    "1. Swap USDC <> R2USD",
+    "1. Otomatis Bot",
+    "2. Swap USDC <> R2USD",
     "2. Swap R2 <> USDC",
     "3. Swap BTC <> R2BTC",
     "4. Add Liquidity",
@@ -450,7 +451,8 @@ function showMainMenu() {
   menuBox.focus();
   menuBox.on('select', (item, index) => {
     switch (index) {
-      case 0: showSwapMenu("USDC", "R2USD"); break;
+      case 0: showAutoBotForm(); break;
+      case 1: showSwapMenu("USDC", "R2USD"); break;
       case 1: showSwapMenu("R2", "USDC"); break;
       case 2: showSwapMenu("BTC", "R2BTC"); break;
       case 3: showLiquidityMenu("add"); break;
@@ -785,3 +787,38 @@ function initApp() {
 
 // Start the application
 initApp();
+
+
+function showAutoBotForm() {
+  showForm("Otomatis Bot", [
+    { label: "Swap Amount USDC → R2USD", ref: "swapAmount" },
+    { label: "Add R2 Amount", ref: "addAmountR2" },
+    { label: "Add R2USD Amount", ref: "addAmountR2USD" },
+    { label: "Remove Liquidity % (20-100)", ref: "removePercent" },
+    { label: "Delay antar aksi (detik)", ref: "delayBetween" }
+  ], (data) => {
+    runAutoBot(data);
+  });
+}
+
+async function runAutoBot(config) {
+  async function delay(seconds) {
+    addLog(`⏳ Delay ${seconds}s...`, "debug");
+    return new Promise(resolve => setTimeout(resolve, seconds * 1000));
+  }
+
+  async function runTasksOnce() {
+    await executeSwap("USDC", "R2USD", parseFloat(config.swapAmount), 1, 0, 0);
+    await delay(parseInt(config.delayBetween));
+    await executeAddLiquidity("R2", "R2USD", parseFloat(config.addAmountR2), parseFloat(config.addAmountR2USD), 1, 0, 0);
+    await delay(parseInt(config.delayBetween));
+    await executeRemoveLiquidity("R2USD", "sR2USD", parseInt(config.removePercent), 1, 0, 0);
+  }
+
+  while (true) {
+    addLog("🚀 Mulai Otomatis Bot Session", "info");
+    await runTasksOnce();
+    addLog("✅ Selesai satu sesi. Bot akan tidur 24 jam...", "info");
+    await delay(24 * 60 * 60);
+  }
+}
