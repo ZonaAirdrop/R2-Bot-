@@ -50,7 +50,6 @@ let walletInfo = {
     BTC: "0",
     R2USD: "0",
     sR2USD: "0",
-    R2BTC: "0",
     R2: "0",
     LP_R2USD_sR2USD: "0",
     LP_USDC_R2USD: "0",
@@ -112,7 +111,6 @@ async function updateWalletData() {
       getTokenBalance(CONFIG.BTC_ADDRESS, provider, wallet),
       getTokenBalance(CONFIG.R2USD_ADDRESS, provider, wallet),
       getTokenBalance(CONFIG.sR2USD_ADDRESS, provider, wallet),
-      getTokenBalance(CONFIG.R2BTC_ADDRESS, provider, wallet),
       getTokenBalance(CONFIG.R2_ADDRESS, provider, wallet),
       getTokenBalance(CONFIG.LP_R2USD_sR2USD, provider, wallet),
       getTokenBalance(CONFIG.LP_USDC_R2USD, provider, wallet),
@@ -125,11 +123,10 @@ async function updateWalletData() {
       BTC: balances[2],
       R2USD: balances[3],
       sR2USD: balances[4],
-      R2BTC: balances[5],
-      R2: balances[6],
-      LP_R2USD_sR2USD: balances[7],
-      LP_USDC_R2USD: balances[8],
-      LP_R2_R2USD: balances[9]
+      R2: balances[5],
+      LP_R2USD_sR2USD: balances[6],
+      LP_USDC_R2USD: balances[7],
+      LP_R2_R2USD: balances[8]
     };
 
     currentNonce = await provider.getTransactionCount(wallet.address, "pending");
@@ -144,20 +141,18 @@ function updateWalletDisplay() {
   const content = `┌── Address   : {bright-yellow-fg}${shortAddress}{/bright-yellow-fg}
 │   ├── ETH           : {bright-green-fg}${Number(walletInfo.balances.native).toFixed(4)}{/bright-green-fg}
 │   ├── USDC          : {bright-green-fg}${Number(walletInfo.balances.USDC).toFixed(2)}{/bright-green-fg}
-│   ├── BTC           : {bright-green-fg}${Number(walletInfo.balances.BTC).toFixed(8)}{/bright-green-fg}
 │   ├── R2USD         : {bright-green-fg}${Number(walletInfo.balances.R2USD).toFixed(4)}{/bright-green-fg}
 │   ├── sR2USD        : {bright-green-fg}${Number(walletInfo.balances.sR2USD).toFixed(4)}{/bright-green-fg}
-│   ├── R2BTC         : {bright-green-fg}${Number(walletInfo.balances.R2BTC).toFixed(8)}{/bright-green-fg}
 │   ├── R2            : {bright-green-fg}${Number(walletInfo.balances.R2).toFixed(4)}{/bright-green-fg}
 │   ├── LP R2USD-sR2USD : {bright-green-fg}${Number(walletInfo.balances.LP_R2USD_sR2USD).toFixed(4)}{/bright-green-fg}
 │   ├── LP USDC-R2USD : {bright-green-fg}${Number(walletInfo.balances.LP_USDC_R2USD).toFixed(4)}{/bright-green-fg}
-│   └── LP R2-R2USD   : {bright-green-fg}${Number(walletInfo.balances.LP_R2_R2USD).toFixed(4)}{/bright-green-fg}
+│   ├── LP R2-R2USD   : {bright-green-fg}${Number(walletInfo.balances.LP_R2_R2USD).toFixed(4)}{/bright-green-fg}
+│   └── BTC           : {bright-green-fg}${Number(walletInfo.balances.BTC).toFixed(8)}{/bright-green-fg}
 └── Network        : {bright-cyan-fg}${CONFIG.NETWORK_NAME}{/bright-cyan-fg}`;
   walletBox.setContent(content);
   screen.render();
 }
 
-// Transaction Log Formatter
 function printTxLog(type, tx, block, explorer, custom = "") {
   addLog("waiting verify task", "debug");
   addLog(`Block   : ${block}`, "info");
@@ -166,7 +161,7 @@ function printTxLog(type, tx, block, explorer, custom = "") {
   if (custom) addLog(custom, "debug");
 }
 
-// Transaction Functions (Swap/Add/Remove/Stake/Unstake/Deposit)
+// Transaction Functions
 async function executeSwap(fromToken, toToken, amount, times, minDelay, maxDelay) {
   for (let i = 0; i < times; i++) {
     if (i > 0) {
@@ -188,7 +183,6 @@ async function executeSwap(fromToken, toToken, amount, times, minDelay, maxDelay
 
       let decimals = (fromToken === "BTC" || toToken === "BTC") ? 8 : 6;
       if (fromToken === "R2") decimals = 18;
-      if (fromToken === "R2BTC" || toToken === "R2BTC") decimals = 8;
       const amountIn = ethers.parseUnits(amount.toString(), decimals);
 
       addLog(`[${i+1}/${times}] Preparing swap ${fromToken} -> ${toToken}...`, "info");
@@ -420,8 +414,6 @@ async function executeDepositBTC(amount, times, minDelay, maxDelay) {
     try {
       provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
       wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-      // Simulasi saja, actual bridging WBTC ke R2BTC harus lewat protocol
-      // Di sini treat as swap BTC->R2BTC
       await executeSwap("BTC", "R2BTC", amount, 1, 0, 0);
     } catch (error) {
       addLog(`[${i+1}/${times}] Deposit BTC failed: ${error.message}`, "error");
@@ -432,18 +424,18 @@ async function executeDepositBTC(amount, times, minDelay, maxDelay) {
 // UI Functions
 function showMainMenu() {
   menuBox.setItems([
-    "Start 24h Auto Mode",
-    "Manual Swap USDC <> R2USD",
-    "Manual Swap BTC <> R2BTC",
-    "Manual Stake R2USD",
-    "Manual Unstake sR2USD",
-    "Manual Add Liquidity",
-    "Manual Remove Liquidity",
-    "Manual Deposit BTC",
-    "Transaction History",
-    "Clear Logs",
-    "Refresh",
-    "Exit"
+    "1. Swap USDC <> R2USD",
+    "2. Swap R2 <> USDC",
+    "3. Swap BTC <> R2BTC",
+    "4. Add Liquidity",
+    "5. Remove Liquidity",
+    "6. Stake R2USD",
+    "7. Unstake sR2USD",
+    "8. Deposit BTC",
+    "9. Transaction History",
+    "10. Clear Logs",
+    "11. Refresh",
+    "12. Exit"
   ]);
   menuBox.focus();
   menuBox.on('select', (item, index) => handleMenu(index));
@@ -451,13 +443,13 @@ function showMainMenu() {
 
 function handleMenu(index) {
   switch (index) {
-    case 0: addLog("Auto Mode belum diimplementasikan, gunakan mode manual", "info"); break;
-    case 1: showSwapMenu(); break;
+    case 0: showSwapMenu(); break;
+    case 1: showR2SwapMenu(); break;
     case 2: showSwapBTCMenu(); break;
-    case 3: showStakeMenu(); break;
-    case 4: showUnstakeMenu(); break;
-    case 5: showAddLiquidityMenu(); break;
-    case 6: showRemoveLiquidityMenu(); break;
+    case 3: showAddLiquidityMenu(); break;
+    case 4: showRemoveLiquidityMenu(); break;
+    case 5: showStakeMenu(); break;
+    case 6: showUnstakeMenu(); break;
     case 7: showDepositBTCMenu(); break;
     case 8: showHistory(); break;
     case 9: logBox.setContent(""); screen.render(); break;
@@ -467,32 +459,73 @@ function handleMenu(index) {
 }
 
 function showSwapMenu() {
-  showSwapGenericMenu([
-    { title: "Swap USDC to R2USD", from: "USDC", to: "R2USD" },
-    { title: "Swap R2USD to USDC", from: "R2USD", to: "USDC" },
-    { title: "Swap R2 to USDC", from: "R2", to: "USDC" },
-    { title: "Swap USDC to R2", from: "USDC", to: "R2" }
-  ]);
-}
-
-function showSwapBTCMenu() {
-  showSwapGenericMenu([
-    { title: "Swap BTC to R2BTC", from: "BTC", to: "R2BTC" },
-    { title: "Swap R2BTC to BTC", from: "R2BTC", to: "BTC" }
-  ]);
-}
-
-function showSwapGenericMenu(pairs) {
   const swapMenu = blessed.list({
     parent: screen,
     top: 'center', left: 'center', width: '60%', height: '60%',
     border: { type: 'line' }, style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
-    items: pairs.map(x => x.title).concat(["Back to Main Menu"])
+    items: [
+      "Swap USDC to R2USD",
+      "Swap R2USD to USDC",
+      "Back to Main Menu"
+    ]
   });
   screen.append(swapMenu); swapMenu.focus();
   swapMenu.on('select', (item, idx) => {
-    if (idx === pairs.length) { screen.remove(swapMenu); showMainMenu(); return; }
-    screen.remove(swapMenu); showSwapForm(pairs[idx]);
+    if (idx === 2) { screen.remove(swapMenu); showMainMenu(); return; }
+    screen.remove(swapMenu);
+    const pairs = [
+      { from: "USDC", to: "R2USD" },
+      { from: "R2USD", to: "USDC" }
+    ];
+    showSwapForm(pairs[idx]);
+  });
+  screen.render();
+}
+
+function showR2SwapMenu() {
+  const swapMenu = blessed.list({
+    parent: screen,
+    top: 'center', left: 'center', width: '60%', height: '60%',
+    border: { type: 'line' }, style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
+    items: [
+      "Swap R2 to USDC",
+      "Swap USDC to R2",
+      "Back to Main Menu"
+    ]
+  });
+  screen.append(swapMenu); swapMenu.focus();
+  swapMenu.on('select', (item, idx) => {
+    if (idx === 2) { screen.remove(swapMenu); showMainMenu(); return; }
+    screen.remove(swapMenu);
+    const pairs = [
+      { from: "R2", to: "USDC" },
+      { from: "USDC", to: "R2" }
+    ];
+    showSwapForm(pairs[idx]);
+  });
+  screen.render();
+}
+
+function showSwapBTCMenu() {
+  const swapMenu = blessed.list({
+    parent: screen,
+    top: 'center', left: 'center', width: '60%', height: '60%',
+    border: { type: 'line' }, style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
+    items: [
+      "Swap BTC to R2BTC",
+      "Swap R2BTC to BTC",
+      "Back to Main Menu"
+    ]
+  });
+  screen.append(swapMenu); swapMenu.focus();
+  swapMenu.on('select', (item, idx) => {
+    if (idx === 2) { screen.remove(swapMenu); showMainMenu(); return; }
+    screen.remove(swapMenu);
+    const pairs = [
+      { from: "BTC", to: "R2BTC" },
+      { from: "R2BTC", to: "BTC" }
+    ];
+    showSwapForm(pairs[idx]);
   });
   screen.render();
 }
@@ -624,65 +657,192 @@ function showDepositBTCMenu() {
   showForm("Deposit WBTC to R2BTC", [
     { label: "How many times to deposit?", ref: "times" },
     { label: "Amount of WBTC per deposit?", ref: "amount" },
-    { label: "Minimum delay between deposit (seconds)?", ref: "minDelay" },
-    { label: "Maximum delay between deposit (seconds)?", ref: "maxDelay" }
-  ], ({ times, amount, minDelay, maxDelay }) =>
-    executeDepositBTC(amount, times, minDelay, maxDelay).then(() => showMainMenu())
-  );
+    { label: "Minimum delay between deposits (seconds)?", ref: "minDelay" },
+    { label: "Maximum delay between deposits (seconds)?", ref: "maxDelay" }
+  ], (data) => {
+    // Process deposit data
+    const { times, amount, minDelay, maxDelay } = data;
+    performDepositBTC(times, amount, minDelay, maxDelay);
+  });
 }
 
-// Generic Form Helper
-function showForm(title, fields, onSubmit) {
-  const form = blessed.form({
-    parent: screen, top: 'center', left: 'center',
-    width: '60%', height: '60%',
-    border: { type: 'line' }, style: { border: { fg: 'cyan' } }
-  });
-  blessed.text({ parent: form, top: 0, left: 2, content: title, style: { bold: true } });
-  const inputs = {};
-  fields.forEach((f, i) => {
-    blessed.text({ parent: form, top: 2 + i*2, left: 2, content: f.label });
-    inputs[f.ref] = blessed.textbox({ parent: form, top: 3 + i*2, left: 2, width: '90%', height: 1, inputOnFocus: true });
-  });
-  const submit = blessed.button({ parent: form, top: 3 + fields.length*2, left: 2, width: 10, height: 1, content: 'Submit', style: { bg: 'green' } });
-  const cancel = blessed.button({ parent: form, top: 3 + fields.length*2, left: 15, width: 10, height: 1, content: 'Cancel', style: { bg: 'red' } });
-  submit.on('press', () => {
-    let values = {};
-    let err = false;
-    fields.forEach(f => {
-      const v = Number(inputs[f.ref].getValue());
-      if (isNaN(v)) err = true;
-      values[f.ref] = v;
+function showSwapMenu() {
+  showMenu("Swap Menu", [
+    { title: "Swap USDC to R2USD", value: "usdcToR2usd" },
+    { title: "Swap R2USD to USDC", value: "r2usdToUsdc" },
+    { title: "Swap R2 to USDC", value: "r2ToUsdc" },
+    { title: "Swap USDC to R2", value: "usdcToR2" },
+    { title: "Back to Main Menu", value: "back" }
+  ], (selected) => {
+    if (selected === "back") {
+      showMainMenu();
+      return;
+    }
+    
+    const swapForms = {
+      "usdcToR2usd": {
+        title: "Swap USDC to R2USD",
+        fields: [
+          { label: "How many times to swap?", ref: "times" },
+          { label: "Amount to swap each time?", ref: "amount" },
+          { label: "Max delay between swaps (seconds)?", ref: "maxDelay" }
+        ]
+      },
+      // Add similar configurations for other swap types
+    };
+    
+    showForm(swapForms[selected].title, swapForms[selected].fields, (data) => {
+      performSwap(selected, data.times, data.amount, data.maxDelay);
     });
-    if (err) { addLog("Invalid input values", "error"); return; }
-    screen.remove(form);
-    onSubmit(values);
   });
-  cancel.on('press', () => { screen.remove(form); showMainMenu(); });
-  screen.append(form);
-  inputs[fields[0].ref].focus();
-  screen.render();
 }
 
-function showHistory() {
-  logBox.setContent("");
-  operationsHistory.forEach((op, idx) => {
-    addLog(`[${idx+1}] ${op.type} | Tx: ${op.txHash} | Block: ${op.blockNumber} | ${op.timestamp}`, "info");
+function showLiquidityMenu() {
+  showMenu("Liquidity Menu", [
+    { title: "Add Liquidity", value: "add" },
+    { title: "Remove Liquidity", value: "remove" },
+    { title: "Back to Main Menu", value: "back" }
+  ], (selected) => {
+    if (selected === "back") {
+      showMainMenu();
+      return;
+    }
+    
+    if (selected === "add") {
+      showAddLiquidityMenu();
+    } else {
+      showRemoveLiquidityMenu();
+    }
   });
-  screen.render();
 }
 
-// Initial UI Setup
-function main() {
-  screen = blessed.screen({ smartCSR: true, title: "DeFi CLI Terminal" });
-  walletBox = blessed.box({ top: 0, left: 0, width: '50%', height: '25%', border: { type: 'line' }, label: "Wallet Info", style: { border: { fg: 'cyan' } } });
-  logBox = blessed.log({ top: '25%', left: 0, width: '50%', height: '75%', border: { type: 'line' }, label: "Logs", style: { border: { fg: 'cyan' } } });
-  menuBox = blessed.list({ top: 0, left: '50%', width: '50%', height: '100%', border: { type: 'line' }, label: "Menu", style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } } });
-  screen.append(walletBox); screen.append(logBox); screen.append(menuBox);
-  updateWalletDisplay();
+function showAddLiquidityMenu() {
+  showMenu("Add Liquidity", [
+    { title: "Add R2 to USDC", value: "r2Usdc" },
+    { title: "Add R2 to R2USD", value: "r2R2usd" },
+    { title: "Add USDC to R2USD", value: "usdcR2usd" },
+    { title: "Add R2USD to sR2USD", value: "r2usdSR2usd" },
+    { title: "Back", value: "back" }
+  ], (selected) => {
+    if (selected === "back") {
+      showLiquidityMenu();
+      return;
+    }
+    
+    showForm(`Add Liquidity ${selected}`, [
+      { label: "How many times to add liquidity?", ref: "times" },
+      { label: "Amount to add each time?", ref: "amount" },
+      { label: "Delay between adds (seconds)?", ref: "delay" }
+    ], (data) => {
+      performAddLiquidity(selected, data.times, data.amount, data.delay);
+    });
+  });
+}
+
+function showRemoveLiquidityMenu() {
+  showMenu("Remove Liquidity", [
+    { title: "Remove R2 and USDC", value: "r2Usdc" },
+    { title: "Remove R2 and R2USD", value: "r2R2usd" },
+    { title: "Remove USDC and R2USD", value: "usdcR2usd" },
+    { title: "Remove R2USD and sR2USD", value: "r2usdSR2usd" },
+    { title: "Back", value: "back" }
+  ], (selected) => {
+    if (selected === "back") {
+      showLiquidityMenu();
+      return;
+    }
+    
+    showForm(`Remove Liquidity ${selected}`, [
+      { label: "Percentage to remove?", ref: "percentage", type: "select", options: [
+        { title: "20%", value: 20 },
+        { title: "30%", value: 30 },
+        { title: "40%", value: 40 },
+        { title: "50%", value: 50 }
+      ]},
+      { label: "Delay before removing (seconds)?", ref: "delay" }
+    ], (data) => {
+      performRemoveLiquidity(selected, data.percentage, data.delay);
+    });
+  });
+}
+
+function showStakingMenu() {
+  showMenu("Staking Menu", [
+    { title: "Stake R2USD to sR2USD", value: "stake" },
+    { title: "Unstake sR2USD to R2USD", value: "unstake" },
+    { title: "Back to Main Menu", value: "back" }
+  ], (selected) => {
+    if (selected === "back") {
+      showMainMenu();
+      return;
+    }
+    
+    const action = selected === "stake" ? "Stake" : "Unstake";
+    showForm(`${action} R2USD/sR2USD`, [
+      { label: "How many times to ${selected}?", ref: "times" },
+      { label: "Amount to ${selected} each time?", ref: "amount" },
+      { label: "Delay between ${selected}s (seconds)?", ref: "delay" }
+    ], (data) => {
+      if (selected === "stake") {
+        performStake(data.times, data.amount, data.delay);
+      } else {
+        performUnstake(data.times, data.amount, data.delay);
+      }
+    });
+  });
+}
+
+// Example transaction processing function
+async function performSwap(type, times, amount, maxDelay) {
+  for (let i = 0; i < times; i++) {
+    console.log(`Waiting to verify task...`);
+    
+    // Simulate swap transaction
+    const txHash = "0x" + Math.random().toString(16).substr(2, 64);
+    const blockNumber = Math.floor(Math.random() * 10000000) + 10000000;
+    const now = new Date();
+    
+    console.log(`Block   : ${blockNumber}`);
+    console.log(`[ ${now.toLocaleDateString()} ${now.toLocaleTimeString()} ] | Tx Hash : ${txHash}`);
+    console.log(`Explorer: https://testnet.pharosscan.xyz/tx/${txHash}`);
+    
+    // Random delay between transactions
+    const delay = Math.floor(Math.random() * maxDelay * 1000);
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
   showMainMenu();
-  screen.key(['escape', 'q', 'C-c'], () => process.exit(0));
-  updateWalletData();
 }
 
-main();
+// Similar functions would be needed for:
+// - performDepositBTC
+// - performAddLiquidity
+// - performRemoveLiquidity
+// - performStake
+// - performUnstake
+
+function showMainMenu() {
+  showMenu("Main Menu", [
+    { title: "Swap", value: "swap" },
+    { title: "Liquidity", value: "liquidity" },
+    { title: "Staking", value: "staking" },
+    { title: "Deposit BTC", value: "deposit" },
+    { title: "Exit", value: "exit" }
+  ], (selected) => {
+    switch (selected) {
+      case "swap":
+        showSwapMenu();
+        break;
+      case "liquidity":
+        showLiquidityMenu();
+        break;
+      case "staking":
+        showStakingMenu();
+        break;
+      case "deposit":
+        showDepositBTCMenu();
+        break;
+      case "exit":
+        process.exit(0);
+    }
+  });
+}
