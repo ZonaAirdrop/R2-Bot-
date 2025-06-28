@@ -206,7 +206,7 @@ async function handleManualOperation(operationType) {
         const numAmount = parseFloat(amount);
         const numDelay = parseInt(delay) * 1000;
         
-        if (isNaN(numAmount) {
+        if (isNaN(numAmount)) {
           logBox.setContent(`${logBox.getContent()}\nInvalid amount`);
           screen.render();
           return resolve();
