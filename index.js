@@ -438,285 +438,340 @@ function showMainMenu() {
     "12. Exit"
   ]);
   menuBox.focus();
-  menuBox.on('select', (item, index) => handleMenu(index));
-}
-
-function handleMenu(index) {
-  switch (index) {
-    case 0: showSwapMenu(); break;
-    case 1: showR2SwapMenu(); break;
-    case 2: showSwapBTCMenu(); break;
-    case 3: showAddLiquidityMenu(); break;
-    case 4: showRemoveLiquidityMenu(); break;
-    case 5: showStakeMenu(); break;
-    case 6: showUnstakeMenu(); break;
-    case 7: showDepositBTCMenu(); break;
-    case 8: showHistory(); break;
-    case 9: logBox.setContent(""); screen.render(); break;
-    case 10: updateWalletData(); break;
-    case 11: process.exit(0);
-  }
-}
-
-function showSwapMenu() {
-  const swapMenu = blessed.list({
-    parent: screen,
-    top: 'center', left: 'center', width: '60%', height: '60%',
-    border: { type: 'line' }, style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
-    items: [
-      "Swap USDC to R2USD",
-      "Swap R2USD to USDC",
-      "Back to Main Menu"
-    ]
-  });
-  screen.append(swapMenu); swapMenu.focus();
-  swapMenu.on('select', (item, idx) => {
-    if (idx === 2) { screen.remove(swapMenu); showMainMenu(); return; }
-    screen.remove(swapMenu);
-    const pairs = [
-      { from: "USDC", to: "R2USD" },
-      { from: "R2USD", to: "USDC" }
-    ];
-    showSwapForm(pairs[idx]);
+  menuBox.on('select', (item, index) => {
+    switch (index) {
+      case 0: showSwapMenu("USDC", "R2USD"); break;
+      case 1: showSwapMenu("R2", "USDC"); break;
+      case 2: showSwapMenu("BTC", "R2BTC"); break;
+      case 3: showLiquidityMenu("add"); break;
+      case 4: showLiquidityMenu("remove"); break;
+      case 5: showStakingMenu("stake"); break;
+      case 6: showStakingMenu("unstake"); break;
+      case 7: showDepositBTCMenu(); break;
+      case 8: showTransactionHistory(); break;
+      case 9: logBox.setContent(""); screen.render(); break;
+      case 10: updateWalletData(); break;
+      case 11: process.exit(0);
+    }
   });
   screen.render();
 }
 
-function showR2SwapMenu() {
-  const swapMenu = blessed.list({
-    parent: screen,
-    top: 'center', left: 'center', width: '60%', height: '60%',
-    border: { type: 'line' }, style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
-    items: [
-      "Swap R2 to USDC",
-      "Swap USDC to R2",
-      "Back to Main Menu"
-    ]
-  });
-  screen.append(swapMenu); swapMenu.focus();
-  swapMenu.on('select', (item, idx) => {
-    if (idx === 2) { screen.remove(swapMenu); showMainMenu(); return; }
-    screen.remove(swapMenu);
-    const pairs = [
-      { from: "R2", to: "USDC" },
-      { from: "USDC", to: "R2" }
-    ];
-    showSwapForm(pairs[idx]);
-  });
-  screen.render();
-}
-
-function showSwapBTCMenu() {
-  const swapMenu = blessed.list({
-    parent: screen,
-    top: 'center', left: 'center', width: '60%', height: '60%',
-    border: { type: 'line' }, style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
-    items: [
-      "Swap BTC to R2BTC",
-      "Swap R2BTC to BTC",
-      "Back to Main Menu"
-    ]
-  });
-  screen.append(swapMenu); swapMenu.focus();
-  swapMenu.on('select', (item, idx) => {
-    if (idx === 2) { screen.remove(swapMenu); showMainMenu(); return; }
-    screen.remove(swapMenu);
-    const pairs = [
-      { from: "BTC", to: "R2BTC" },
-      { from: "R2BTC", to: "BTC" }
-    ];
-    showSwapForm(pairs[idx]);
-  });
-  screen.render();
-}
-
-function showSwapForm(pair) {
+function showForm(title, fields, onSubmit) {
   const form = blessed.form({
-    parent: screen, top: 'center', left: 'center',
-    width: '60%', height: '60%',
-    border: { type: 'line' }, style: { border: { fg: 'cyan' } }
+    parent: screen,
+    top: 'center',
+    left: 'center',
+    width: '60%',
+    height: '60%',
+    border: { type: 'line' },
+    style: { border: { fg: 'cyan' } }
   });
-  const rows = [
-    { label: `How many ${pair.from}->${pair.to} swaps?`, ref: "times" },
-    { label: `Amount of ${pair.from} per swap?`, ref: "amount" },
-    { label: "Minimum delay between swaps (seconds)?", ref: "minDelay" },
-    { label: "Maximum delay between swaps (seconds)?", ref: "maxDelay" }
-  ];
+
   const inputs = {};
-  rows.forEach((row, i) => {
-    blessed.text({ parent: form, top: 1 + i*2, left: 2, content: row.label });
-    inputs[row.ref] = blessed.textbox({ parent: form, top: 2 + i*2, left: 2, width: '90%', height: 1, inputOnFocus: true });
+  blessed.text({
+    parent: form,
+    top: 1,
+    left: 2,
+    content: title
   });
-  const submit = blessed.button({ parent: form, top: 10, left: 2, width: 10, height: 1, content: 'Submit', style: { bg: 'green' } });
-  const cancel = blessed.button({ parent: form, top: 10, left: 15, width: 10, height: 1, content: 'Cancel', style: { bg: 'red' } });
+
+  fields.forEach((field, i) => {
+    blessed.text({
+      parent: form,
+      top: 3 + i * 2,
+      left: 2,
+      content: field.label
+    });
+    inputs[field.ref] = blessed.textbox({
+      parent: form,
+      top: 4 + i * 2,
+      left: 2,
+      width: '90%',
+      height: 1,
+      inputOnFocus: true
+    });
+  });
+
+  const submit = blessed.button({
+    parent: form,
+    top: 4 + fields.length * 2,
+    left: 2,
+    width: 10,
+    height: 1,
+    content: 'Submit',
+    style: { bg: 'green' }
+  });
+
+  const cancel = blessed.button({
+    parent: form,
+    top: 4 + fields.length * 2,
+    left: 15,
+    width: 10,
+    height: 1,
+    content: 'Cancel',
+    style: { bg: 'red' }
+  });
+
   submit.on('press', () => {
-    const times = parseInt(inputs.times.getValue()), amount = parseFloat(inputs.amount.getValue());
-    const minDelay = parseInt(inputs.minDelay.getValue()), maxDelay = parseInt(inputs.maxDelay.getValue());
-    if (isNaN(times) || isNaN(amount) || isNaN(minDelay) || isNaN(maxDelay)) { addLog("Invalid input values", "error"); return; }
+    const data = {};
+    fields.forEach(field => {
+      data[field.ref] = inputs[field.ref].getValue();
+    });
     screen.remove(form);
-    executeSwap(pair.from, pair.to, amount, times, minDelay, maxDelay).then(() => showMainMenu());
+    onSubmit(data);
   });
-  cancel.on('press', () => { screen.remove(form); showMainMenu(); });
-  screen.append(form); inputs.times.focus(); screen.render();
+
+  cancel.on('press', () => {
+    screen.remove(form);
+    showMainMenu();
+  });
+
+  screen.append(form);
+  inputs[fields[0].ref].focus();
+  screen.render();
 }
 
-function showStakeMenu() {
-  showForm("Stake R2USD", [
-    { label: "How many times to stake?", ref: "times" },
-    { label: "Amount of R2USD to stake each time?", ref: "amount" },
-    { label: "Minimum delay between stakes (seconds)?", ref: "minDelay" },
-    { label: "Maximum delay between stakes (seconds)?", ref: "maxDelay" }
-  ], ({ times, amount, minDelay, maxDelay }) =>
-    executeStake(amount, times, minDelay, maxDelay).then(() => showMainMenu())
-  );
-}
-
-function showUnstakeMenu() {
-  showForm("Unstake sR2USD", [
-    { label: "How many times to unstake?", ref: "times" },
-    { label: "Amount of sR2USD to unstake each time?", ref: "amount" },
-    { label: "Minimum delay between unstakes (seconds)?", ref: "minDelay" },
-    { label: "Maximum delay between unstakes (seconds)?", ref: "maxDelay" }
-  ], ({ times, amount, minDelay, maxDelay }) =>
-    executeUnstake(amount, times, minDelay, maxDelay).then(() => showMainMenu())
-  );
-}
-
-function showAddLiquidityMenu() {
-  const liqMenu = blessed.list({
-    parent: screen, top: 'center', left: 'center', width: '60%', height: '60%',
-    border: { type: 'line' }, style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
+function showLiquidityMenu(action) {
+  const title = action === "add" ? "Add Liquidity" : "Remove Liquidity";
+  const menu = blessed.list({
+    parent: screen,
+    top: 'center',
+    left: 'center',
+    width: '60%',
+    height: '60%',
+    border: { type: 'line' },
+    style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
     items: [
-      "Add R2-USDC Liquidity",
-      "Add R2-R2USD Liquidity",
-      "Add USDC-R2USD Liquidity",
-      "Add R2USD-sR2USD Liquidity",
+      `${action === "add" ? "Add" : "Remove"} R2-USDC Liquidity`,
+      `${action === "add" ? "Add" : "Remove"} R2-R2USD Liquidity`,
+      `${action === "add" ? "Add" : "Remove"} USDC-R2USD Liquidity`,
+      `${action === "add" ? "Add" : "Remove"} R2USD-sR2USD Liquidity`,
       "Back to Main Menu"
     ]
   });
-  screen.append(liqMenu); liqMenu.focus();
-  liqMenu.on('select', (item, idx) => {
-    if (idx === 4) { screen.remove(liqMenu); showMainMenu(); return; }
+
+  screen.append(menu);
+  menu.focus();
+
+  menu.on('select', (item, idx) => {
+    if (idx === 4) {
+      screen.remove(menu);
+      showMainMenu();
+      return;
+    }
+
     const pairs = [
       { tokenA: "R2", tokenB: "USDC" },
       { tokenA: "R2", tokenB: "R2USD" },
       { tokenA: "USDC", tokenB: "R2USD" },
       { tokenA: "R2USD", tokenB: "sR2USD" }
     ];
-    screen.remove(liqMenu);
-    showForm(`Add ${pairs[idx].tokenA}-${pairs[idx].tokenB} Liquidity`, [
-      { label: `How many times to add liquidity ${pairs[idx].tokenA}-${pairs[idx].tokenB}?`, ref: "times" },
-      { label: `Amount of ${pairs[idx].tokenA} per add?`, ref: "amountA" },
-      { label: `Amount of ${pairs[idx].tokenB} per add?`, ref: "amountB" },
-      { label: "Minimum delay between add (seconds)?", ref: "minDelay" },
-      { label: "Maximum delay between add (seconds)?", ref: "maxDelay" }
-    ], ({ times, amountA, amountB, minDelay, maxDelay }) =>
-      executeAddLiquidity(pairs[idx].tokenA, pairs[idx].tokenB, amountA, amountB, times, minDelay, maxDelay)
-        .then(() => showMainMenu())
-    );
+
+    const pair = pairs[idx];
+    screen.remove(menu);
+
+    if (action === "add") {
+      showForm(`Add ${pair.tokenA}-${pair.tokenB} Liquidity`, [
+        { label: `How many times to add liquidity?`, ref: "times" },
+        { label: `Amount of ${pair.tokenA} per add?`, ref: "amountA" },
+        { label: `Amount of ${pair.tokenB} per add?`, ref: "amountB" },
+        { label: "Min delay between adds (seconds)?", ref: "minDelay" },
+        { label: "Max delay between adds (seconds)?", ref: "maxDelay" }
+      ], (data) => {
+        executeAddLiquidity(
+          pair.tokenA,
+          pair.tokenB,
+          parseFloat(data.amountA),
+          parseFloat(data.amountB),
+          parseInt(data.times),
+          parseInt(data.minDelay),
+          parseInt(data.maxDelay)
+        ).then(() => showMainMenu());
+      });
+    } else {
+      showForm(`Remove ${pair.tokenA}-${pair.tokenB} Liquidity`, [
+        { label: `How many times to remove liquidity?`, ref: "times" },
+        { label: "Percentage to remove (20 or 50)?", ref: "percentage" },
+        { label: "Min delay between removes (seconds)?", ref: "minDelay" },
+        { label: "Max delay between removes (seconds)?", ref: "maxDelay" }
+      ], (data) => {
+        executeRemoveLiquidity(
+          pair.tokenA,
+          pair.tokenB,
+          parseInt(data.percentage),
+          parseInt(data.times),
+          parseInt(data.minDelay),
+          parseInt(data.maxDelay)
+        ).then(() => showMainMenu());
+      });
+    }
   });
+
   screen.render();
 }
 
-function showRemoveLiquidityMenu() {
-  const rmMenu = blessed.list({
-    parent: screen, top: 'center', left: 'center', width: '60%', height: '60%',
-    border: { type: 'line' }, style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
-    items: [
-      "Remove R2-USDC Liquidity",
-      "Remove R2-R2USD Liquidity",
-      "Remove USDC-R2USD Liquidity",
-      "Remove R2USD-sR2USD Liquidity",
-      "Back to Main Menu"
-    ]
-  });
-  screen.append(rmMenu); rmMenu.focus();
-  rmMenu.on('select', (item, idx) => {
-    if (idx === 4) { screen.remove(rmMenu); showMainMenu(); return; }
-    const pairs = [
-      { tokenA: "R2", tokenB: "USDC" },
-      { tokenA: "R2", tokenB: "R2USD" },
-      { tokenA: "USDC", tokenB: "R2USD" },
-      { tokenA: "R2USD", tokenB: "sR2USD" }
-    ];
-    screen.remove(rmMenu);
-    showForm(`Remove ${pairs[idx].tokenA}-${pairs[idx].tokenB} Liquidity`, [
-      { label: `How many times to remove liquidity ${pairs[idx].tokenA}-${pairs[idx].tokenB}?`, ref: "times" },
-      { label: "Percentage to remove (20 or 50)?", ref: "percentage" },
-      { label: "Minimum delay between remove (seconds)?", ref: "minDelay" },
-      { label: "Maximum delay between remove (seconds)?", ref: "maxDelay" }
-    ], ({ times, percentage, minDelay, maxDelay }) =>
-      executeRemoveLiquidity(pairs[idx].tokenA, pairs[idx].tokenB, percentage, times, minDelay, maxDelay)
-        .then(() => showMainMenu())
-    );
-  });
-  screen.render();
-}
-
-function showDepositBTCMenu() {
-  showForm("Deposit WBTC to R2BTC", [
-    { label: "How many times to deposit?", ref: "times" },
-    { label: "Amount of WBTC per deposit?", ref: "amount" },
-    { label: "Minimum delay between deposits (seconds)?", ref: "minDelay" },
-    { label: "Maximum delay between deposits (seconds)?", ref: "maxDelay" }
+function showStakingMenu(action) {
+  const title = action === "stake" ? "Stake R2USD" : "Unstake sR2USD";
+  showForm(title, [
+    { label: "How many times to " + action + "?", ref: "times" },
+    { label: `Amount to ${action} each time?`, ref: "amount" },
+    { label: "Minimum delay between actions (seconds)?", ref: "minDelay" },
+    { label: "Maximum delay between actions (seconds)?", ref: "maxDelay" }
   ], (data) => {
-    // Process deposit data
-    const { times, amount, minDelay, maxDelay } = data;
-    performDepositBTC(times, amount, minDelay, maxDelay);
-  });
-}
-
-// Example transaction processing function
-async function performSwap(type, times, amount, maxDelay) {
-  for (let i = 0; i < times; i++) {
-    console.log(`Waiting to verify task...`);
-    
-    // Simulate swap transaction
-    const txHash = "0x" + Math.random().toString(16).substr(2, 64);
-    const blockNumber = Math.floor(Math.random() * 10000000) + 10000000;
-    const now = new Date();
-    
-    console.log(`Block   : ${blockNumber}`);
-    console.log(`[ ${now.toLocaleDateString()} ${now.toLocaleTimeString()} ] | Tx Hash : ${txHash}`);
-    console.log(`Explorer: https://testnet.pharosscan.xyz/tx/${txHash}`);
-    
-    // Random delay between transactions
-    const delay = Math.floor(Math.random() * maxDelay * 1000);
-    await new Promise(resolve => setTimeout(resolve, delay));
-  }
-  showMainMenu();
-}
-
-// Similar functions would be needed for:
-// - performDepositBTC
-// - performAddLiquidity
-// - performRemoveLiquidity
-// - performStake
-// - performUnstake
-
-function showMainMenu() {
-  showMenu("Main Menu", [
-    { title: "Swap", value: "swap" },
-    { title: "Liquidity", value: "liquidity" },
-    { title: "Staking", value: "staking" },
-    { title: "Deposit BTC", value: "deposit" },
-    { title: "Exit", value: "exit" }
-  ], (selected) => {
-    switch (selected) {
-      case "swap":
-        showSwapMenu();
-        break;
-      case "liquidity":
-        showLiquidityMenu();
-        break;
-      case "staking":
-        showStakingMenu();
-        break;
-      case "deposit":
-        showDepositBTCMenu();
-        break;
-      case "exit":
-        process.exit(0);
+    if (action === "stake") {
+      executeStake(
+        parseFloat(data.amount),
+        parseInt(data.times),
+        parseInt(data.minDelay),
+        parseInt(data.maxDelay)
+      ).then(() => showMainMenu());
+    } else {
+      executeUnstake(
+        parseFloat(data.amount),
+        parseInt(data.times),
+        parseInt(data.minDelay),
+        parseInt(data.maxDelay)
+      ).then(() => showMainMenu());
     }
   });
 }
+
+function showDepositBTCMenu() {
+  showForm("Deposit BTC", [
+    { label: "How many times to deposit?", ref: "times" },
+    { label: "Amount of BTC per deposit?", ref: "amount" },
+    { label: "Minimum delay between deposits (seconds)?", ref: "minDelay" },
+    { label: "Maximum delay between deposits (seconds)?", ref: "maxDelay" }
+  ], (data) => {
+    executeDepositBTC(
+      parseFloat(data.amount),
+      parseInt(data.times),
+      parseInt(data.minDelay),
+      parseInt(data.maxDelay)
+    ).then(() => showMainMenu());
+  });
+}
+
+function showTransactionHistory() {
+  const historyBox = blessed.box({
+    parent: screen,
+    top: 'center',
+    left: 'center',
+    width: '80%',
+    height: '80%',
+    border: { type: 'line' },
+    style: { border: { fg: 'cyan' } },
+    scrollable: true,
+    alwaysScroll: true,
+    scrollbar: {
+      ch: ' ',
+      style: {
+        bg: 'blue'
+      }
+    }
+  });
+
+  const content = operationsHistory.map(op => 
+    `${op.type} | Amount: ${op.amount || ''} | Block: ${op.blockNumber} | Tx: ${op.txHash}`
+  ).join('\n');
+
+  historyBox.setContent(content || "No transactions yet");
+  
+  const close = blessed.button({
+    parent: historyBox,
+    bottom: 1,
+    left: 'center',
+    width: 10,
+    height: 1,
+    content: 'Close',
+    style: { bg: 'red' }
+  });
+
+  close.on('press', () => {
+    screen.remove(historyBox);
+    showMainMenu();
+  });
+
+  screen.append(historyBox);
+  close.focus();
+  screen.render();
+}
+
+// Initialize the application
+function initApp() {
+  screen = blessed.screen({
+    smartCSR: true,
+    title: 'R2 Bot Interface'
+  });
+
+  // Create header
+  blessed.box({
+    parent: screen,
+    top: 0,
+    left: 0,
+    width: '100%',
+    height: 3,
+    content: '{center} R2 Bot Interface {/center}',
+    style: {
+      fg: 'white',
+      bg: 'blue',
+      bold: true
+    }
+  });
+
+  // Create wallet info box
+  walletBox = blessed.box({
+    parent: screen,
+    top: 3,
+    left: 0,
+    width: '30%',
+    height: '40%',
+    border: { type: 'line' },
+    style: { border: { fg: 'cyan' } }
+  });
+
+  // Create log box
+  logBox = blessed.log({
+    parent: screen,
+    top: 3,
+    left: '30%',
+    width: '70%',
+    height: '40%',
+    border: { type: 'line' },
+    style: { border: { fg: 'cyan' } },
+    scrollable: true,
+    scrollbar: {
+      ch: ' ',
+      style: {
+        bg: 'blue'
+      }
+    }
+  });
+
+  // Create menu box
+  menuBox = blessed.list({
+    parent: screen,
+    bottom: 0,
+    left: 0,
+    width: '100%',
+    height: '60%',
+    border: { type: 'line' },
+    style: { 
+      selected: { bg: 'blue' }, 
+      border: { fg: 'cyan' } 
+    },
+    keys: true,
+    mouse: true
+  });
+
+  // Quit on Escape, q, or Control-C
+  screen.key(['escape', 'q', 'C-c'], () => process.exit(0));
+
+  // Initial update
+  updateWalletData();
+  showMainMenu();
+}
+
+// Start the application
+initApp();
