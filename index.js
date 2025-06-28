@@ -6,7 +6,7 @@ import axios from "axios";
 import FormData from "form-data";
 
 // Configuration
-const SEPOLIA_RPC = "https://sepolia.infura.io/v3/ef659d824bd14ae798d965f855f2cfd6";
+const RPC_URL= https://ethereum-sepolia-rpc.publicnode.com/);
 const initialProvider = new ethers.providers.JsonRpcProvider(SEPOLIA_RPC);
 const initialWallet = new ethers.Wallet(process.env.PRIVATE_KEY, initialProvider);
 
