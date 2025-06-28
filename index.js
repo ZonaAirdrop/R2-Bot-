@@ -1,27 +1,22 @@
+
 import "dotenv/config";
 import blessed from "blessed";
 import figlet from "figlet";
 import { ethers } from "ethers";
-import axios from "axios";
-import FormData from "form-data";
 
-// Ambil konfigurasi dari .env
-const RPC_URL = process.env.RPC_URL;
+const RPC_URL = process.env.RPC_URL || "https://sepolia.infura.io/v3/ef659d824bd14ae798d965f855f2cfd6";
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
-if (!RPC_URL || !PRIVATE_KEY) {
-  console.error("❌ .env tidak lengkap: pastikan ada RPC_URL dan PRIVATE_KEY");
+if (!PRIVATE_KEY) {
+  console.error("❌ Error: PRIVATE_KEY tidak ditemukan di .env");
   process.exit(1);
 }
 
 const provider = new ethers.JsonRpcProvider(RPC_URL);
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
-const wallet_address = wallet.address;
 
-console.log("✅ Wallet address:", wallet_address);
-
-// ... lanjutkan bot kamu di bawah sini ...
-
+console.log("✅ Wallet address:", wallet.address);
+console.log("🔗 RPC Provider:", RPC_URL);
 const CONFIG = {
   RPC_URL: SEPOLIA_RPC,
   USDC_ADDRESS: "0xc7BcCf452965Def7d5D9bF02943e3348F758D3CB",
