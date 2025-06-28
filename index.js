@@ -4,7 +4,7 @@ import figlet from "figlet";
 import { ethers } from "ethers";
 
 // Configuration
-const SEPOLIA_RPC = "https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161";
+const SEPOLIA_RPC = "https://sepolia.infura.io/v3/ef659d824bd14ae798d965f855f2cfd6";
 const initialProvider = new ethers.JsonRpcProvider(SEPOLIA_RPC);
 const initialWallet = new ethers.Wallet(process.env.PRIVATE_KEY, initialProvider);
 
