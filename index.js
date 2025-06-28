@@ -5,12 +5,12 @@ import { ethers } from "ethers";
 import axios from "axios";
 import FormData from "form-data";
 
-// Gunakan env vars
+// Ambil dari .env
 const RPC_URL = process.env.RPC_URL;
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
 if (!RPC_URL || !PRIVATE_KEY) {
-  console.error("❌ Missing RPC_URL or PRIVATE_KEY in .env file");
+  console.error("❌ ENV variable missing. Pastikan RPC_URL dan PRIVATE_KEY ada di .env");
   process.exit(1);
 }
 
