@@ -7,8 +7,9 @@ import FormData from "form-data";
 
 // Configuration
 const RPC_URL= https://ethereum-sepolia-rpc.publicnode.com/);
-const initialProvider = new ethers.providers.JsonRpcProvider(SEPOLIA_RPC);
+const initialProvider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 const initialWallet = new ethers.Wallet(process.env.PRIVATE_KEY, initialProvider);
+const wallet_address = initialWallet.address;
 
 const CONFIG = {
   RPC_URL: SEPOLIA_RPC,
