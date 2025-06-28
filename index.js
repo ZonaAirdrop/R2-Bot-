@@ -3,7 +3,7 @@ import blessed from "blessed";
 import figlet from "figlet";
 import { ethers } from "ethers";
 
-const SEPOLIA_RPC = "https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161";
+const SEPOLIA_RPC = "https://sepolia.infura.io/v3/8fd1a4b2d3444172b240fb7efc241bf1";
 const initialProvider = new ethers.JsonRpcProvider(SEPOLIA_RPC);
 const initialWallet = new ethers.Wallet(process.env.PRIVATE_KEY, initialProvider);
 
