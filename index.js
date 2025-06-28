@@ -52,7 +52,7 @@ const STAKING_ABI = [
 ];
 
 let walletInfo = {
-  address: initialWallet.address,
+  console.log(wallet.address);
   balances: {
     native: "0",
     USDC: "0",
