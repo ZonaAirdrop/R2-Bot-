@@ -206,7 +206,7 @@ async function handleManualOperation(operationType) {
         const numAmount = parseFloat(amount);
         const numDelay = parseInt(delay) * 1000;
         
-        if (isNaN(numAmount)) {
+        if (isNaN(numAmount) {
           logBox.setContent(`${logBox.getContent()}\nInvalid amount`);
           screen.render();
           return resolve();
@@ -244,7 +244,7 @@ async function handleManualOperation(operationType) {
             logBox.setContent(`${logBox.getContent()}\n[ERROR] ${error.message}`);
           }
           screen.render();
-          await updateWalletData();
+          // await updateWalletData(); (moved below after walletBox is defined)
         }, numDelay);
         
         resolve();
@@ -288,7 +288,7 @@ function startAutoMode() {
         logBox.setContent(`${logBox.getContent()}\n[AUTO ERROR] ${error.message}`);
       }
       screen.render();
-      await updateWalletData();
+      // await updateWalletData(); (moved below after walletBox is defined)
     }, delay);
   }, 30 * 1000);
 
@@ -316,7 +316,7 @@ function startAutoMode() {
         logBox.setContent(`${logBox.getContent()}\n[AUTO ERROR] ${error.message}`);
       }
       screen.render();
-      await updateWalletData();
+      // await updateWalletData(); (moved below after walletBox is defined)
     }, delay);
   }, 45 * 60 * 1000);
 
@@ -535,7 +535,7 @@ async function removeLiquidity(tokenA, tokenB, lpAmount) {
 
 async function main() {
   console.log(figlet.textSync('R2 Testnet Bot'));
-  await updateWalletData();
+  // await updateWalletData(); (moved below after walletBox is defined)
   
   screen = blessed.screen({
     smartCSR: true,
@@ -620,7 +620,7 @@ async function main() {
       screen.render();
     }
     else if (selected === 'Refresh') {
-      await updateWalletData();
+      // await updateWalletData(); (moved below after walletBox is defined)
     }
     else if (selected === 'Exit') {
       process.exit(0);
