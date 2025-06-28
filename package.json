@@ -1,5 +1,5 @@
 {
-  "name": "R2 Bot",
+  "name": "R2 Bot zonaairdrop",
   "version": "1.0.0",
   "main": "index.js",
   "type": "module",
@@ -7,11 +7,13 @@
     "start": "node index.js"
   },
   "author": "zonaairdrop",
-  "license": "ISC",
+  "license": "HTT",
   "dependencies": {
+    "axios": "^1.9.0",
     "blessed": "^0.1.81",
     "dotenv": "^16.4.7",
-    "ethers": "^5.7.2"
-    "figlet": "^1.8.0"
+    "ethers": "^6.13.7",
+    "figlet": "^1.8.0",
+    "form-data": "^4.0.2",
   }
 }
