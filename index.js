@@ -449,6 +449,7 @@ function showMainMenu() {
     "12. Exit"
   ]);
   menuBox.focus();
+  menuBox.key(["enter"], function() { menuBox.emit("select", menuBox.items[menuBox.selected], menuBox.selected); });
   menuBox.on('select', (item, index) => {
     switch (index) {
       case 0: showAutoBotForm(); break;
@@ -501,7 +502,7 @@ function showForm(title, fields, onSubmit) {
       left: 2,
       width: '90%',
       height: 1,
-      inputOnFocus: true
+      inputOnFocus: true, keys: true, mouse: true
     });
   });
 
@@ -540,6 +541,7 @@ function showForm(title, fields, onSubmit) {
   });
 
   screen.append(form);
+  form.key(['escape'], () => { screen.remove(form); showMainMenu(); });
   inputs[fields[0].ref].focus();
   screen.render();
 }
@@ -565,6 +567,7 @@ function showLiquidityMenu(action) {
 
   screen.append(menu);
   menu.focus();
+  menu.key(["enter"], function() { menu.emit("select", menu.items[menu.selected], menu.selected); });
 
   menu.on('select', (item, idx) => {
     if (idx === 4) {
