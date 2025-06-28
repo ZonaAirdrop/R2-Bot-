@@ -3,16 +3,18 @@ import blessed from "blessed";
 import figlet from "figlet";
 import { ethers } from "ethers";
 
-const SEPOLIA_RPC = "https://sepolia.infura.io/v3/8fd1a4b2d3444172b240fb7efc241bf1";
+// Configuration
+const SEPOLIA_RPC = "https://sepolia.infura.io/v3/9aa3d95b3bc440fa88ea12eaa4456161";
 const initialProvider = new ethers.JsonRpcProvider(SEPOLIA_RPC);
 const initialWallet = new ethers.Wallet(process.env.PRIVATE_KEY, initialProvider);
 
-const SEPOLIA_CONFIG = {
+const CONFIG = {
   RPC_URL: SEPOLIA_RPC,
   USDC_ADDRESS: "0xc7BcCf452965Def7d5D9bF02943e3348F758D3CB",
   BTC_ADDRESS: "0x0f3B4ae3f2b63B21b12e423444d065CC82e3DfA5",
   R2USD_ADDRESS: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",
   sR2USD_ADDRESS: "0x006CbF409CA275bA022111dB32BDAE054a97d488",
+  R2BTC_ADDRESS: process.env.R2BTC_ADDRESS,
   R2_ADDRESS: "0xb816bB88f836EA75Ca4071B46FF285f690C43bb7",
   SWAP_ROUTER: "0x47d1B0623bB3E557bF8544C159c9ae51D091F8a2",
   BTC_SWAP_ROUTER: "0x23b2615d783e16f14b62efa125306c7c69b4941a",
@@ -23,14 +25,14 @@ const SEPOLIA_CONFIG = {
   NETWORK_NAME: "Sepolia Testnet"
 };
 
-const ERC20ABI = [
+const ERC20_ABI = [
   "function decimals() view returns (uint8)",
   "function balanceOf(address owner) view returns (uint256)",
   "function approve(address spender, uint256 amount) returns (bool)",
   "function allowance(address owner, address spender) view returns (uint256)"
 ];
 
-const UNISWAP_V2_ROUTER_ABI = [
+const ROUTER_ABI = [
   "function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)",
   "function addLiquidity(address tokenA, address tokenB, uint amountADesired, uint amountBDesired, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB, uint liquidity)",
   "function removeLiquidity(address tokenA, address tokenB, uint liquidity, uint amountAMin, uint amountBMin, address to, uint deadline) external returns (uint amountA, uint amountB)"
@@ -41,594 +43,647 @@ const STAKING_ABI = [
   "function withdraw(uint256 amount) external"
 ];
 
-const randomAmountRanges = {
-  "SWAP_R2USD_USDC": {
-    USDC: { min: 50, max: 200 },
-    R2USD: { min: 50, max: 200 }
-  },
-  "SWAP_BTC_R2BTC": {
-    BTC: { min: 0.001, max: 0.01 }
-  }
-};
-
 let walletInfo = {
-  address: "",
-  balanceNative: "0.00",
-  balanceUsdc: "0.00",
-  balanceBtc: "0.00",
-  balanceR2usd: "0.00",
-  balanceSr2usd: "0.00",
-  balanceR2btc: "0.00",
-  balanceR2: "0.00",
-  balanceLpR2usdSr2usd: "0.00",
-  balanceLpUsdcR2usd: "0.00",
-  balanceLpR2R2usd: "0.00",
-  network: SEPOLIA_CONFIG.NETWORK_NAME,
-  status: "Initializing"
+  address: initialWallet.address,
+  balances: {
+    native: "0",
+    USDC: "0",
+    BTC: "0",
+    R2USD: "0",
+    sR2USD: "0",
+    R2BTC: "0",
+    R2: "0",
+    LP_R2USD_sR2USD: "0",
+    LP_USDC_R2USD: "0",
+    LP_R2_R2USD: "0"
+  },
+  status: "Ready"
 };
 
 let transactionLogs = [];
 let operationsHistory = [];
-let autoMode = false;
-let swapRunning = false;
-let swapDirection = true;
-let provider = null;
-let nextNonce = null;
-let operationIntervals = {};
-let screen = null;
-let walletBox = null;
-let logBox = null;
+let currentNonce = 0;
+let screen, walletBox, logBox, menuBox;
+
+// Helper Functions
+function addLog(message, type = "info") {
+  const colors = { info: "white", error: "red", success: "green", debug: "yellow" };
+  const timestamp = new Date().toLocaleString();
+  logBox.add(`[${timestamp}] | {${colors[type]}-fg}${message}{/${colors[type]}-fg}`);
+  screen.render();
+}
 
 async function getTokenBalance(tokenAddress, provider, wallet) {
-  const contract = new ethers.Contract(tokenAddress, ERC20ABI, provider);
-  const decimals = await contract.decimals();
-  const balance = await contract.balanceOf(wallet.address);
-  return ethers.formatUnits(balance, decimals);
+  try {
+    const contract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+    const decimals = await contract.decimals();
+    const balance = await contract.balanceOf(wallet.address);
+    return ethers.formatUnits(balance, decimals);
+  } catch (error) {
+    addLog(`Error getting balance for ${tokenAddress}: ${error.message}`, "error");
+    return "0";
+  }
 }
 
 async function ensureApproval(tokenAddress, spender, amount, wallet) {
-  const contract = new ethers.Contract(tokenAddress, ERC20ABI, wallet);
-  const allowance = await contract.allowance(wallet.address, spender);
-  
-  if (allowance < amount) {
-    const tx = await contract.approve(spender, amount);
-    await tx.wait();
-    return true;
+  try {
+    const contract = new ethers.Contract(tokenAddress, ERC20_ABI, wallet);
+    const allowance = await contract.allowance(wallet.address, spender);
+    if (allowance < amount) {
+      addLog(`Approving ${tokenAddress} for spender ${spender}...`, "info");
+      const tx = await contract.approve(spender, amount);
+      await tx.wait();
+      return true;
+    }
+    return false;
+  } catch (error) {
+    addLog(`Approval failed: ${error.message}`, "error");
+    throw error;
   }
-  return false;
 }
 
 async function updateWalletData() {
   try {
-    const config = SEPOLIA_CONFIG;
-    const localProvider = new ethers.JsonRpcProvider(config.RPC_URL);
-    const localWallet = new ethers.Wallet(process.env.PRIVATE_KEY, localProvider);
-
-    walletInfo.address = localWallet.address;
+    const provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
+    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
     const balances = await Promise.all([
-      localProvider.getBalance(localWallet.address),
-      getTokenBalance(config.USDC_ADDRESS, localProvider, localWallet),
-      getTokenBalance(config.BTC_ADDRESS, localProvider, localWallet),
-      getTokenBalance(config.R2USD_ADDRESS, localProvider, localWallet),
-      getTokenBalance(config.sR2USD_ADDRESS, localProvider, localWallet),
-      getTokenBalance(config.R2BTC_ADDRESS, localProvider, localWallet),
-      getTokenBalance(config.R2_ADDRESS, localProvider, localWallet),
-      getTokenBalance(config.LP_R2USD_sR2USD, localProvider, localWallet),
-      getTokenBalance(config.LP_USDC_R2USD, localProvider, localWallet),
-      getTokenBalance(config.LP_R2_R2USD, localProvider, localWallet)
+      provider.getBalance(wallet.address),
+      getTokenBalance(CONFIG.USDC_ADDRESS, provider, wallet),
+      getTokenBalance(CONFIG.BTC_ADDRESS, provider, wallet),
+      getTokenBalance(CONFIG.R2USD_ADDRESS, provider, wallet),
+      getTokenBalance(CONFIG.sR2USD_ADDRESS, provider, wallet),
+      getTokenBalance(CONFIG.R2BTC_ADDRESS, provider, wallet),
+      getTokenBalance(CONFIG.R2_ADDRESS, provider, wallet),
+      getTokenBalance(CONFIG.LP_R2USD_sR2USD, provider, wallet),
+      getTokenBalance(CONFIG.LP_USDC_R2USD, provider, wallet),
+      getTokenBalance(CONFIG.LP_R2_R2USD, provider, wallet)
     ]);
 
-    walletInfo.balanceNative = ethers.formatEther(balances[0]);
-    walletInfo.balanceUsdc = balances[1];
-    walletInfo.balanceBtc = balances[2];
-    walletInfo.balanceR2usd = balances[3];
-    walletInfo.balanceSr2usd = balances[4];
-    walletInfo.balanceR2btc = balances[5];
-    walletInfo.balanceR2 = balances[6];
-    walletInfo.balanceLpR2usdSr2usd = balances[7];
-    walletInfo.balanceLpUsdcR2usd = balances[8];
-    walletInfo.balanceLpR2R2usd = balances[9];
+    walletInfo.balances = {
+      native: ethers.formatEther(balances[0]),
+      USDC: balances[1],
+      BTC: balances[2],
+      R2USD: balances[3],
+      sR2USD: balances[4],
+      R2BTC: balances[5],
+      R2: balances[6],
+      LP_R2USD_sR2USD: balances[7],
+      LP_USDC_R2USD: balances[8],
+      LP_R2_R2USD: balances[9]
+    };
 
-    nextNonce = await localProvider.getTransactionCount(localWallet.address, "pending");
-    walletInfo.status = "Ready";
+    currentNonce = await provider.getTransactionCount(wallet.address, "pending");
     updateWalletDisplay();
   } catch (error) {
-    logBox.setContent(`${logBox.getContent()}\nError updating wallet: ${error.message}`);
-    screen.render();
+    addLog(`Balance update failed: ${error.message}`, "error");
   }
 }
 
 function updateWalletDisplay() {
   const shortAddress = walletInfo.address ? `${walletInfo.address.slice(0, 6)}...${walletInfo.address.slice(-4)}` : "N/A";
-  
-  const content = `┌── Address   : ${shortAddress}
-│   ├── ETH           : ${Number(walletInfo.balanceNative).toFixed(4)}
-│   ├── USDC          : ${Number(walletInfo.balanceUsdc).toFixed(2)}
-│   ├── BTC           : ${Number(walletInfo.balanceBtc).toFixed(8)}
-│   ├── R2USD         : ${Number(walletInfo.balanceR2usd).toFixed(4)}
-│   ├── sR2USD        : ${Number(walletInfo.balanceSr2usd).toFixed(4)}
-│   ├── R2BTC         : ${Number(walletInfo.balanceR2btc).toFixed(8)}
-│   ├── R2            : ${Number(walletInfo.balanceR2).toFixed(4)}
-│   ├── LP R2USD-sR2USD : ${Number(walletInfo.balanceLpR2usdSr2usd).toFixed(4)}
-│   ├── LP USDC-R2USD : ${Number(walletInfo.balanceLpUsdcR2usd).toFixed(4)}
-│   └── LP R2-R2USD   : ${Number(walletInfo.balanceLpR2R2usd).toFixed(4)}
-└── Network        : ${walletInfo.network}`;
-  
+  const content = `┌── Address   : {bright-yellow-fg}${shortAddress}{/bright-yellow-fg}
+│   ├── ETH           : {bright-green-fg}${Number(walletInfo.balances.native).toFixed(4)}{/bright-green-fg}
+│   ├── USDC          : {bright-green-fg}${Number(walletInfo.balances.USDC).toFixed(2)}{/bright-green-fg}
+│   ├── BTC           : {bright-green-fg}${Number(walletInfo.balances.BTC).toFixed(8)}{/bright-green-fg}
+│   ├── R2USD         : {bright-green-fg}${Number(walletInfo.balances.R2USD).toFixed(4)}{/bright-green-fg}
+│   ├── sR2USD        : {bright-green-fg}${Number(walletInfo.balances.sR2USD).toFixed(4)}{/bright-green-fg}
+│   ├── R2BTC         : {bright-green-fg}${Number(walletInfo.balances.R2BTC).toFixed(8)}{/bright-green-fg}
+│   ├── R2            : {bright-green-fg}${Number(walletInfo.balances.R2).toFixed(4)}{/bright-green-fg}
+│   ├── LP R2USD-sR2USD : {bright-green-fg}${Number(walletInfo.balances.LP_R2USD_sR2USD).toFixed(4)}{/bright-green-fg}
+│   ├── LP USDC-R2USD : {bright-green-fg}${Number(walletInfo.balances.LP_USDC_R2USD).toFixed(4)}{/bright-green-fg}
+│   └── LP R2-R2USD   : {bright-green-fg}${Number(walletInfo.balances.LP_R2_R2USD).toFixed(4)}{/bright-green-fg}
+└── Network        : {bright-cyan-fg}${CONFIG.NETWORK_NAME}{/bright-cyan-fg}`;
   walletBox.setContent(content);
   screen.render();
 }
 
-function getMainMenuItems() {
-  return [
-    ...(swapRunning ? ["Stop Bot"] : ["Start 24h Auto Mode"]),
+// Transaction Log Formatter
+function printTxLog(type, tx, block, explorer, custom = "") {
+  addLog("waiting verify task", "debug");
+  addLog(`Block   : ${block}`, "info");
+  addLog(`[ ${new Date().toLocaleString()} ] | Tx Hash : ${tx}`, "info");
+  addLog(`[ ${new Date().toLocaleString()} ] | Explorer: ${explorer}`, "debug");
+  if (custom) addLog(custom, "debug");
+}
+
+// Transaction Functions (Swap/Add/Remove/Stake/Unstake/Deposit)
+async function executeSwap(fromToken, toToken, amount, times, minDelay, maxDelay) {
+  for (let i = 0; i < times; i++) {
+    if (i > 0) {
+      const delay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
+      addLog(`Waiting ${delay} seconds before next swap...`, "info");
+      await new Promise(resolve => setTimeout(resolve, delay * 1000));
+    }
+    let provider, wallet;
+    try {
+      provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
+      wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+
+      const routerAddress = fromToken === "BTC" || toToken === "BTC" ? CONFIG.BTC_SWAP_ROUTER : CONFIG.SWAP_ROUTER;
+      const router = new ethers.Contract(routerAddress, ROUTER_ABI, wallet);
+
+      const fromAddress = CONFIG[`${fromToken}_ADDRESS`];
+      const toAddress = CONFIG[`${toToken}_ADDRESS`];
+      const path = [fromAddress, toAddress];
+
+      let decimals = (fromToken === "BTC" || toToken === "BTC") ? 8 : 6;
+      if (fromToken === "R2") decimals = 18;
+      if (fromToken === "R2BTC" || toToken === "R2BTC") decimals = 8;
+      const amountIn = ethers.parseUnits(amount.toString(), decimals);
+
+      addLog(`[${i+1}/${times}] Preparing swap ${fromToken} -> ${toToken}...`, "info");
+      await ensureApproval(fromAddress, routerAddress, amountIn, wallet);
+
+      addLog(`[${i+1}/${times}] Executing swap...`, "info");
+      const tx = await router.swapExactTokensForTokens(
+        amountIn,
+        0,
+        path,
+        wallet.address,
+        Math.floor(Date.now() / 1000) + 1200,
+        { nonce: currentNonce++, gasLimit: 500000 }
+      );
+      addLog(`[${i+1}/${times}] Waiting for transaction confirmation...`, "info");
+      const receipt = await tx.wait();
+
+      operationsHistory.push({
+        type: `Swap ${fromToken}->${toToken}`,
+        amount, txHash: tx.hash, blockNumber: receipt.blockNumber, timestamp: new Date().toISOString()
+      });
+      printTxLog(`Swap ${fromToken}->${toToken}`, tx.hash, receipt.blockNumber, `https://sepolia.etherscan.io/tx/${tx.hash}`);
+      await updateWalletData();
+    } catch (error) {
+      addLog(`[${i+1}/${times}] Swap failed: ${error.message}`, "error");
+      if (error.code === "NONCE_EXPIRED") {
+        currentNonce = await provider.getTransactionCount(wallet.address, "pending");
+      }
+    }
+  }
+}
+
+async function executeStake(amount, times, minDelay, maxDelay) {
+  for (let i = 0; i < times; i++) {
+    if (i > 0) {
+      const delay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
+      addLog(`Waiting ${delay} seconds before next stake...`, "info");
+      await new Promise(resolve => setTimeout(resolve, delay * 1000));
+    }
+    let provider, wallet;
+    try {
+      provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
+      wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+
+      const staking = new ethers.Contract(CONFIG.STAKING_CONTRACT, STAKING_ABI, wallet);
+      const amountIn = ethers.parseUnits(amount.toString(), 6);
+
+      addLog(`[${i+1}/${times}] Preparing stake...`, "info");
+      await ensureApproval(CONFIG.R2USD_ADDRESS, CONFIG.STAKING_CONTRACT, amountIn, wallet);
+
+      addLog(`[${i+1}/${times}] Executing stake...`, "info");
+      const tx = await staking.stake(amountIn, { nonce: currentNonce++, gasLimit: 500000 });
+      addLog(`[${i+1}/${times}] Waiting for transaction confirmation...`, "info");
+      const receipt = await tx.wait();
+
+      operationsHistory.push({
+        type: "Stake R2USD",
+        amount, txHash: tx.hash, blockNumber: receipt.blockNumber, timestamp: new Date().toISOString()
+      });
+      printTxLog("Stake R2USD", tx.hash, receipt.blockNumber, `https://sepolia.etherscan.io/tx/${tx.hash}`);
+      await updateWalletData();
+    } catch (error) {
+      addLog(`[${i+1}/${times}] Stake failed: ${error.message}`, "error");
+      if (error.code === "NONCE_EXPIRED") {
+        currentNonce = await provider.getTransactionCount(wallet.address, "pending");
+      }
+    }
+  }
+}
+
+async function executeUnstake(amount, times, minDelay, maxDelay) {
+  for (let i = 0; i < times; i++) {
+    if (i > 0) {
+      const delay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
+      addLog(`Waiting ${delay} seconds before next unstake...`, "info");
+      await new Promise(resolve => setTimeout(resolve, delay * 1000));
+    }
+    let provider, wallet;
+    try {
+      provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
+      wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+
+      const staking = new ethers.Contract(CONFIG.STAKING_CONTRACT, STAKING_ABI, wallet);
+      const amountIn = ethers.parseUnits(amount.toString(), 6);
+
+      addLog(`[${i+1}/${times}] Preparing unstake...`, "info");
+      addLog(`[${i+1}/${times}] Executing unstake...`, "info");
+      const tx = await staking.withdraw(amountIn, { nonce: currentNonce++, gasLimit: 500000 });
+      addLog(`[${i+1}/${times}] Waiting for transaction confirmation...`, "info");
+      const receipt = await tx.wait();
+
+      operationsHistory.push({
+        type: "Unstake sR2USD",
+        amount, txHash: tx.hash, blockNumber: receipt.blockNumber, timestamp: new Date().toISOString()
+      });
+      printTxLog("Unstake sR2USD", tx.hash, receipt.blockNumber, `https://sepolia.etherscan.io/tx/${tx.hash}`);
+      await updateWalletData();
+    } catch (error) {
+      addLog(`[${i+1}/${times}] Unstake failed: ${error.message}`, "error");
+      if (error.code === "NONCE_EXPIRED") {
+        currentNonce = await provider.getTransactionCount(wallet.address, "pending");
+      }
+    }
+  }
+}
+
+async function executeAddLiquidity(tokenA, tokenB, amountA, amountB, times, minDelay, maxDelay) {
+  for (let i = 0; i < times; i++) {
+    if (i > 0) {
+      const delay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
+      addLog(`Waiting ${delay} seconds before next liquidity add...`, "info");
+      await new Promise(resolve => setTimeout(resolve, delay * 1000));
+    }
+    let provider, wallet;
+    try {
+      provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
+      wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+
+      const router = new ethers.Contract(CONFIG.SWAP_ROUTER, ROUTER_ABI, wallet);
+      const tokenAAddress = CONFIG[`${tokenA}_ADDRESS`];
+      const tokenBAddress = CONFIG[`${tokenB}_ADDRESS`];
+
+      let decimalsA = (tokenA === "BTC") ? 8 : (tokenA === "R2" ? 18 : 6);
+      let decimalsB = (tokenB === "BTC") ? 8 : (tokenB === "R2" ? 18 : 6);
+      const amountADesired = ethers.parseUnits(amountA.toString(), decimalsA);
+      const amountBDesired = ethers.parseUnits(amountB.toString(), decimalsB);
+
+      addLog(`[${i+1}/${times}] Preparing liquidity add ${tokenA}-${tokenB}...`, "info");
+      await ensureApproval(tokenAAddress, CONFIG.SWAP_ROUTER, amountADesired, wallet);
+      await ensureApproval(tokenBAddress, CONFIG.SWAP_ROUTER, amountBDesired, wallet);
+
+      addLog(`[${i+1}/${times}] Executing liquidity add...`, "info");
+      const tx = await router.addLiquidity(
+        tokenAAddress,
+        tokenBAddress,
+        amountADesired,
+        amountBDesired,
+        0,
+        0,
+        wallet.address,
+        Math.floor(Date.now() / 1000) + 1200,
+        { nonce: currentNonce++, gasLimit: 500000 }
+      );
+      addLog(`[${i+1}/${times}] Waiting for transaction confirmation...`, "info");
+      const receipt = await tx.wait();
+
+      operationsHistory.push({
+        type: `Add Liquidity ${tokenA}-${tokenB}`,
+        amountA, amountB, txHash: tx.hash, blockNumber: receipt.blockNumber, timestamp: new Date().toISOString()
+      });
+      printTxLog(`AddLiquidity ${tokenA}-${tokenB}`, tx.hash, receipt.blockNumber, `https://sepolia.etherscan.io/tx/${tx.hash}`);
+      await updateWalletData();
+    } catch (error) {
+      addLog(`[${i+1}/${times}] Liquidity add failed: ${error.message}`, "error");
+      if (error.code === "NONCE_EXPIRED") {
+        currentNonce = await provider.getTransactionCount(wallet.address, "pending");
+      }
+    }
+  }
+}
+
+async function executeRemoveLiquidity(tokenA, tokenB, percentage, times, minDelay, maxDelay) {
+  for (let i = 0; i < times; i++) {
+    if (i > 0) {
+      const delay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
+      addLog(`Waiting ${delay} seconds before next liquidity remove...`, "info");
+      await new Promise(resolve => setTimeout(resolve, delay * 1000));
+    }
+    let provider, wallet;
+    try {
+      provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
+      wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+
+      const router = new ethers.Contract(CONFIG.SWAP_ROUTER, ROUTER_ABI, wallet);
+      const tokenAAddress = CONFIG[`${tokenA}_ADDRESS`];
+      const tokenBAddress = CONFIG[`${tokenB}_ADDRESS`];
+      let lpTokenAddress;
+      if (tokenA === "R2" && tokenB === "USDC") lpTokenAddress = CONFIG.LP_R2_R2USD;
+      else if (tokenA === "R2" && tokenB === "R2USD") lpTokenAddress = CONFIG.LP_R2_R2USD;
+      else if (tokenA === "USDC" && tokenB === "R2USD") lpTokenAddress = CONFIG.LP_USDC_R2USD;
+      else if (tokenA === "R2USD" && tokenB === "sR2USD") lpTokenAddress = CONFIG.LP_R2USD_sR2USD;
+      else throw new Error("Unsupported token pair for remove liquidity");
+
+      const lpContract = new ethers.Contract(lpTokenAddress, ERC20_ABI, provider);
+      const lpBalance = await lpContract.balanceOf(wallet.address);
+      const lpDecimals = await lpContract.decimals();
+      const lpAmount = lpBalance * percentage / 100;
+
+      addLog(`[${i+1}/${times}] Preparing to remove ${percentage}% of ${tokenA}-${tokenB} liquidity...`, "info");
+      await ensureApproval(lpTokenAddress, CONFIG.SWAP_ROUTER, lpAmount, wallet);
+
+      addLog(`[${i+1}/${times}] Executing liquidity remove...`, "info");
+      const tx = await router.removeLiquidity(
+        tokenAAddress,
+        tokenBAddress,
+        lpAmount,
+        0,
+        0,
+        wallet.address,
+        Math.floor(Date.now() / 1000) + 1200,
+        { nonce: currentNonce++, gasLimit: 500000 }
+      );
+      addLog(`[${i+1}/${times}] Waiting for transaction confirmation...`, "info");
+      const receipt = await tx.wait();
+
+      operationsHistory.push({
+        type: `Remove Liquidity ${tokenA}-${tokenB}`,
+        percentage, txHash: tx.hash, blockNumber: receipt.blockNumber, timestamp: new Date().toISOString()
+      });
+      printTxLog(`RemoveLiquidity ${tokenA}-${tokenB}`, tx.hash, receipt.blockNumber, `https://sepolia.etherscan.io/tx/${tx.hash}`);
+      await updateWalletData();
+    } catch (error) {
+      addLog(`[${i+1}/${times}] Liquidity remove failed: ${error.message}`, "error");
+      if (error.code === "NONCE_EXPIRED") {
+        currentNonce = await provider.getTransactionCount(wallet.address, "pending");
+      }
+    }
+  }
+}
+
+async function executeDepositBTC(amount, times, minDelay, maxDelay) {
+  for (let i = 0; i < times; i++) {
+    if (i > 0) {
+      const delay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
+      addLog(`Waiting ${delay} seconds before next deposit...`, "info");
+      await new Promise(resolve => setTimeout(resolve, delay * 1000));
+    }
+    let provider, wallet;
+    try {
+      provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
+      wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+      // Simulasi saja, actual bridging WBTC ke R2BTC harus lewat protocol
+      // Di sini treat as swap BTC->R2BTC
+      await executeSwap("BTC", "R2BTC", amount, 1, 0, 0);
+    } catch (error) {
+      addLog(`[${i+1}/${times}] Deposit BTC failed: ${error.message}`, "error");
+    }
+  }
+}
+
+// UI Functions
+function showMainMenu() {
+  menuBox.setItems([
+    "Start 24h Auto Mode",
     "Manual Swap USDC <> R2USD",
-    "Manual Swap BTC <> R2BTC", 
+    "Manual Swap BTC <> R2BTC",
     "Manual Stake R2USD",
     "Manual Unstake sR2USD",
     "Manual Add Liquidity",
     "Manual Remove Liquidity",
+    "Manual Deposit BTC",
     "Transaction History",
     "Clear Logs",
     "Refresh",
     "Exit"
+  ]);
+  menuBox.focus();
+  menuBox.on('select', (item, index) => handleMenu(index));
+}
+
+function handleMenu(index) {
+  switch (index) {
+    case 0: addLog("Auto Mode belum diimplementasikan, gunakan mode manual", "info"); break;
+    case 1: showSwapMenu(); break;
+    case 2: showSwapBTCMenu(); break;
+    case 3: showStakeMenu(); break;
+    case 4: showUnstakeMenu(); break;
+    case 5: showAddLiquidityMenu(); break;
+    case 6: showRemoveLiquidityMenu(); break;
+    case 7: showDepositBTCMenu(); break;
+    case 8: showHistory(); break;
+    case 9: logBox.setContent(""); screen.render(); break;
+    case 10: updateWalletData(); break;
+    case 11: process.exit(0);
+  }
+}
+
+function showSwapMenu() {
+  showSwapGenericMenu([
+    { title: "Swap USDC to R2USD", from: "USDC", to: "R2USD" },
+    { title: "Swap R2USD to USDC", from: "R2USD", to: "USDC" },
+    { title: "Swap R2 to USDC", from: "R2", to: "USDC" },
+    { title: "Swap USDC to R2", from: "USDC", to: "R2" }
+  ]);
+}
+
+function showSwapBTCMenu() {
+  showSwapGenericMenu([
+    { title: "Swap BTC to R2BTC", from: "BTC", to: "R2BTC" },
+    { title: "Swap R2BTC to BTC", from: "R2BTC", to: "BTC" }
+  ]);
+}
+
+function showSwapGenericMenu(pairs) {
+  const swapMenu = blessed.list({
+    parent: screen,
+    top: 'center', left: 'center', width: '60%', height: '60%',
+    border: { type: 'line' }, style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
+    items: pairs.map(x => x.title).concat(["Back to Main Menu"])
+  });
+  screen.append(swapMenu); swapMenu.focus();
+  swapMenu.on('select', (item, idx) => {
+    if (idx === pairs.length) { screen.remove(swapMenu); showMainMenu(); return; }
+    screen.remove(swapMenu); showSwapForm(pairs[idx]);
+  });
+  screen.render();
+}
+
+function showSwapForm(pair) {
+  const form = blessed.form({
+    parent: screen, top: 'center', left: 'center',
+    width: '60%', height: '60%',
+    border: { type: 'line' }, style: { border: { fg: 'cyan' } }
+  });
+  const rows = [
+    { label: `How many ${pair.from}->${pair.to} swaps?`, ref: "times" },
+    { label: `Amount of ${pair.from} per swap?`, ref: "amount" },
+    { label: "Minimum delay between swaps (seconds)?", ref: "minDelay" },
+    { label: "Maximum delay between swaps (seconds)?", ref: "maxDelay" }
   ];
+  const inputs = {};
+  rows.forEach((row, i) => {
+    blessed.text({ parent: form, top: 1 + i*2, left: 2, content: row.label });
+    inputs[row.ref] = blessed.textbox({ parent: form, top: 2 + i*2, left: 2, width: '90%', height: 1, inputOnFocus: true });
+  });
+  const submit = blessed.button({ parent: form, top: 10, left: 2, width: 10, height: 1, content: 'Submit', style: { bg: 'green' } });
+  const cancel = blessed.button({ parent: form, top: 10, left: 15, width: 10, height: 1, content: 'Cancel', style: { bg: 'red' } });
+  submit.on('press', () => {
+    const times = parseInt(inputs.times.getValue()), amount = parseFloat(inputs.amount.getValue());
+    const minDelay = parseInt(inputs.minDelay.getValue()), maxDelay = parseInt(inputs.maxDelay.getValue());
+    if (isNaN(times) || isNaN(amount) || isNaN(minDelay) || isNaN(maxDelay)) { addLog("Invalid input values", "error"); return; }
+    screen.remove(form);
+    executeSwap(pair.from, pair.to, amount, times, minDelay, maxDelay).then(() => showMainMenu());
+  });
+  cancel.on('press', () => { screen.remove(form); showMainMenu(); });
+  screen.append(form); inputs.times.focus(); screen.render();
 }
 
-async function handleManualOperation(operationType) {
-  return new Promise((resolve) => {
-    const questionAmount = blessed.prompt({
-      parent: screen,
-      top: 'center',
-      left: 'center',
-      height: 3,
-      width: '50%',
-      border: {type: 'line'},
-      style: {border: {fg: 'cyan'}}
+function showStakeMenu() {
+  showForm("Stake R2USD", [
+    { label: "How many times to stake?", ref: "times" },
+    { label: "Amount of R2USD to stake each time?", ref: "amount" },
+    { label: "Minimum delay between stakes (seconds)?", ref: "minDelay" },
+    { label: "Maximum delay between stakes (seconds)?", ref: "maxDelay" }
+  ], ({ times, amount, minDelay, maxDelay }) =>
+    executeStake(amount, times, minDelay, maxDelay).then(() => showMainMenu())
+  );
+}
+
+function showUnstakeMenu() {
+  showForm("Unstake sR2USD", [
+    { label: "How many times to unstake?", ref: "times" },
+    { label: "Amount of sR2USD to unstake each time?", ref: "amount" },
+    { label: "Minimum delay between unstakes (seconds)?", ref: "minDelay" },
+    { label: "Maximum delay between unstakes (seconds)?", ref: "maxDelay" }
+  ], ({ times, amount, minDelay, maxDelay }) =>
+    executeUnstake(amount, times, minDelay, maxDelay).then(() => showMainMenu())
+  );
+}
+
+function showAddLiquidityMenu() {
+  const liqMenu = blessed.list({
+    parent: screen, top: 'center', left: 'center', width: '60%', height: '60%',
+    border: { type: 'line' }, style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
+    items: [
+      "Add R2-USDC Liquidity",
+      "Add R2-R2USD Liquidity",
+      "Add USDC-R2USD Liquidity",
+      "Add R2USD-sR2USD Liquidity",
+      "Back to Main Menu"
+    ]
+  });
+  screen.append(liqMenu); liqMenu.focus();
+  liqMenu.on('select', (item, idx) => {
+    if (idx === 4) { screen.remove(liqMenu); showMainMenu(); return; }
+    const pairs = [
+      { tokenA: "R2", tokenB: "USDC" },
+      { tokenA: "R2", tokenB: "R2USD" },
+      { tokenA: "USDC", tokenB: "R2USD" },
+      { tokenA: "R2USD", tokenB: "sR2USD" }
+    ];
+    screen.remove(liqMenu);
+    showForm(`Add ${pairs[idx].tokenA}-${pairs[idx].tokenB} Liquidity`, [
+      { label: `How many times to add liquidity ${pairs[idx].tokenA}-${pairs[idx].tokenB}?`, ref: "times" },
+      { label: `Amount of ${pairs[idx].tokenA} per add?`, ref: "amountA" },
+      { label: `Amount of ${pairs[idx].tokenB} per add?`, ref: "amountB" },
+      { label: "Minimum delay between add (seconds)?", ref: "minDelay" },
+      { label: "Maximum delay between add (seconds)?", ref: "maxDelay" }
+    ], ({ times, amountA, amountB, minDelay, maxDelay }) =>
+      executeAddLiquidity(pairs[idx].tokenA, pairs[idx].tokenB, amountA, amountB, times, minDelay, maxDelay)
+        .then(() => showMainMenu())
+    );
+  });
+  screen.render();
+}
+
+function showRemoveLiquidityMenu() {
+  const rmMenu = blessed.list({
+    parent: screen, top: 'center', left: 'center', width: '60%', height: '60%',
+    border: { type: 'line' }, style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
+    items: [
+      "Remove R2-USDC Liquidity",
+      "Remove R2-R2USD Liquidity",
+      "Remove USDC-R2USD Liquidity",
+      "Remove R2USD-sR2USD Liquidity",
+      "Back to Main Menu"
+    ]
+  });
+  screen.append(rmMenu); rmMenu.focus();
+  rmMenu.on('select', (item, idx) => {
+    if (idx === 4) { screen.remove(rmMenu); showMainMenu(); return; }
+    const pairs = [
+      { tokenA: "R2", tokenB: "USDC" },
+      { tokenA: "R2", tokenB: "R2USD" },
+      { tokenA: "USDC", tokenB: "R2USD" },
+      { tokenA: "R2USD", tokenB: "sR2USD" }
+    ];
+    screen.remove(rmMenu);
+    showForm(`Remove ${pairs[idx].tokenA}-${pairs[idx].tokenB} Liquidity`, [
+      { label: `How many times to remove liquidity ${pairs[idx].tokenA}-${pairs[idx].tokenB}?`, ref: "times" },
+      { label: "Percentage to remove (20 or 50)?", ref: "percentage" },
+      { label: "Minimum delay between remove (seconds)?", ref: "minDelay" },
+      { label: "Maximum delay between remove (seconds)?", ref: "maxDelay" }
+    ], ({ times, percentage, minDelay, maxDelay }) =>
+      executeRemoveLiquidity(pairs[idx].tokenA, pairs[idx].tokenB, percentage, times, minDelay, maxDelay)
+        .then(() => showMainMenu())
+    );
+  });
+  screen.render();
+}
+
+function showDepositBTCMenu() {
+  showForm("Deposit WBTC to R2BTC", [
+    { label: "How many times to deposit?", ref: "times" },
+    { label: "Amount of WBTC per deposit?", ref: "amount" },
+    { label: "Minimum delay between deposit (seconds)?", ref: "minDelay" },
+    { label: "Maximum delay between deposit (seconds)?", ref: "maxDelay" }
+  ], ({ times, amount, minDelay, maxDelay }) =>
+    executeDepositBTC(amount, times, minDelay, maxDelay).then(() => showMainMenu())
+  );
+}
+
+// Generic Form Helper
+function showForm(title, fields, onSubmit) {
+  const form = blessed.form({
+    parent: screen, top: 'center', left: 'center',
+    width: '60%', height: '60%',
+    border: { type: 'line' }, style: { border: { fg: 'cyan' } }
+  });
+  blessed.text({ parent: form, top: 0, left: 2, content: title, style: { bold: true } });
+  const inputs = {};
+  fields.forEach((f, i) => {
+    blessed.text({ parent: form, top: 2 + i*2, left: 2, content: f.label });
+    inputs[f.ref] = blessed.textbox({ parent: form, top: 3 + i*2, left: 2, width: '90%', height: 1, inputOnFocus: true });
+  });
+  const submit = blessed.button({ parent: form, top: 3 + fields.length*2, left: 2, width: 10, height: 1, content: 'Submit', style: { bg: 'green' } });
+  const cancel = blessed.button({ parent: form, top: 3 + fields.length*2, left: 15, width: 10, height: 1, content: 'Cancel', style: { bg: 'red' } });
+  submit.on('press', () => {
+    let values = {};
+    let err = false;
+    fields.forEach(f => {
+      const v = Number(inputs[f.ref].getValue());
+      if (isNaN(v)) err = true;
+      values[f.ref] = v;
     });
-    
-    questionAmount.input(`Enter amount for ${operationType}: `, '', async (err, amount) => {
-      if (err) return resolve();
-      
-      const questionDelay = blessed.prompt({
-        parent: screen,
-        top: 'center',
-        left: 'center',
-        height: 3,
-        width: '50%',
-        border: {type: 'line'},
-        style: {border: {fg: 'cyan'}}
-      });
-      
-      questionDelay.input('Enter delay (seconds): ', '', async (err, delay) => {
-        if (err) return resolve();
-        
-        const numAmount = parseFloat(amount);
-        const numDelay = parseInt(delay) * 1000;
-        
-       if (isNaN(numAmount)) {
-          logBox.setContent(`${logBox.getContent()}\nInvalid amount`);
-          screen.render();
-          return resolve();
-        }
-        
-        setTimeout(async () => {
-          try {
-            let tx;
-            switch(operationType) {
-              case 'USDC->R2USD':
-                tx = await swapUsdcToR2usd(numAmount);
-                break;
-              case 'R2USD->USDC':
-                tx = await swapR2usdToUsdc(numAmount);
-                break;
-              case 'BTC->R2BTC':
-                tx = await swapBtcToR2btc(numAmount);
-                break;
-              case 'Stake R2USD':
-                tx = await stakeR2usd(numAmount);
-                break;
-              case 'Unstake sR2USD':
-                tx = await unstakeSr2usd(numAmount);
-                break;
-            }
-            
-            logBox.setContent(`${logBox.getContent()}\n[MANUAL] ${new Date().toISOString()} - ${operationType} ${numAmount} (${tx.hash})`);
-            operationsHistory.push({
-              type: operationType,
-              amount: numAmount,
-              txHash: tx.hash,
-              timestamp: new Date().toISOString()
-            });
-          } catch (error) {
-            logBox.setContent(`${logBox.getContent()}\n[ERROR] ${error.message}`);
-          }
-          screen.render();
-          // await updateWalletData(); (moved below after walletBox is defined)
-        }, numDelay);
-        
-        resolve();
-      });
-    });
+    if (err) { addLog("Invalid input values", "error"); return; }
+    screen.remove(form);
+    onSubmit(values);
   });
-}
-
-function startAutoMode() {
-  autoMode = true;
-  swapRunning = true;
-  const endTime = Date.now() + 24 * 60 * 60 * 1000;
-  
-  operationIntervals.swap = setInterval(async () => {
-    if (Date.now() > endTime) {
-      stopAutoMode();
-      return;
-    }
-    
-    const amount = (swapDirection ? 
-      randomBetween(randomAmountRanges.SWAP_R2USD_USDC.USDC.min, randomAmountRanges.SWAP_R2USD_USDC.USDC.max) :
-      randomBetween(randomAmountRanges.SWAP_R2USD_USDC.R2USD.min, randomAmountRanges.SWAP_R2USD_USDC.R2USD.max)).toFixed(2);
-    
-    const delay = randomBetween(5, 20) * 1000;
-    
-    setTimeout(async () => {
-      try {
-        const tx = swapDirection ? 
-          await swapUsdcToR2usd(amount) : 
-          await swapR2usdToUsdc(amount);
-        
-        logBox.setContent(`${logBox.getContent()}\n[AUTO] ${new Date().toISOString()} - Swapped ${amount} ${swapDirection ? 'USDC->R2USD' : 'R2USD->USDC'} (${tx.hash})`);
-        operationsHistory.push({
-          type: swapDirection ? 'USDC->R2USD' : 'R2USD->USDC',
-          amount: parseFloat(amount),
-          txHash: tx.hash,
-          timestamp: new Date().toISOString()
-        });
-        swapDirection = !swapDirection;
-      } catch (error) {
-        logBox.setContent(`${logBox.getContent()}\n[AUTO ERROR] ${error.message}`);
-      }
-      screen.render();
-      // await updateWalletData(); (moved below after walletBox is defined)
-    }, delay);
-  }, 30 * 1000);
-
-  operationIntervals.staking = setInterval(async () => {
-    if (Date.now() > endTime) {
-      stopAutoMode();
-      return;
-    }
-    
-    const delay = randomBetween(10, 30) * 1000;
-    
-    setTimeout(async () => {
-      try {
-        const amount = randomBetween(randomAmountRanges.SWAP_R2USD_USDC.R2USD.min, randomAmountRanges.SWAP_R2USD_USDC.R2USD.max).toFixed(2);
-        const tx = await stakeR2usd(amount);
-        
-        logBox.setContent(`${logBox.getContent()}\n[AUTO] ${new Date().toISOString()} - Staked ${amount} R2USD (${tx.hash})`);
-        operationsHistory.push({
-          type: 'Stake R2USD',
-          amount: parseFloat(amount),
-          txHash: tx.hash,
-          timestamp: new Date().toISOString()
-        });
-      } catch (error) {
-        logBox.setContent(`${logBox.getContent()}\n[AUTO ERROR] ${error.message}`);
-      }
-      screen.render();
-      // await updateWalletData(); (moved below after walletBox is defined)
-    }, delay);
-  }, 45 * 60 * 1000);
-
-  logBox.setContent(`${logBox.getContent()}\n[AUTO] 24-hour auto mode started`);
+  cancel.on('press', () => { screen.remove(form); showMainMenu(); });
+  screen.append(form);
+  inputs[fields[0].ref].focus();
   screen.render();
 }
 
-function stopAutoMode() {
-  autoMode = false;
-  swapRunning = false;
-  Object.values(operationIntervals).forEach(interval => clearInterval(interval));
-  logBox.setContent(`${logBox.getContent()}\n[AUTO] Auto mode stopped`);
+function showHistory() {
+  logBox.setContent("");
+  operationsHistory.forEach((op, idx) => {
+    addLog(`[${idx+1}] ${op.type} | Tx: ${op.txHash} | Block: ${op.blockNumber} | ${op.timestamp}`, "info");
+  });
   screen.render();
 }
 
-function showTransactionHistory() {
-  const historyBox = blessed.box({
-    top: 'center',
-    left: 'center',
-    width: '80%',
-    height: '80%',
-    border: {type: 'line'},
-    style: {border: {fg: 'cyan'}},
-    scrollable: true,
-    alwaysScroll: true,
-    scrollbar: {
-      ch: ' ',
-      style: {bg: 'blue'}
-    }
-  });
-  
-  let historyContent = 'LAST TRANSACTIONS:\n\n';
-  operationsHistory.slice(-20).reverse().forEach(op => {
-    historyContent += `${op.timestamp} - ${op.type} ${op.amount} (${op.txHash.slice(0,10)}...)\n`;
-  });
-  
-  historyBox.setContent(historyContent);
-  screen.append(historyBox);
-  screen.render();
-  
-  historyBox.key(['escape'], () => {
-    screen.remove(historyBox);
-    screen.render();
-  });
-}
-
-function randomBetween(min, max) {
-  return Math.random() * (max - min) + min;
-}
-
-async function swapUsdcToR2usd(amountUsdc) {
-  const config = SEPOLIA_CONFIG;
-  const provider = new ethers.JsonRpcProvider(config.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-  const amount = ethers.parseUnits(amountUsdc.toString(), 6);
-  const router = new ethers.Contract(config.SWAP_ROUTER, UNISWAP_V2_ROUTER_ABI, wallet);
-  
-  await ensureApproval(config.USDC_ADDRESS, config.SWAP_ROUTER, amount, wallet);
-
-  const path = [config.USDC_ADDRESS, config.R2USD_ADDRESS];
-  const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-  const amountOutMin = 0;
-
-  const tx = await router.swapExactTokensForTokens(
-    amount,
-    amountOutMin,
-    path,
-    wallet.address,
-    deadline,
-    { gasLimit: 500000, nonce: nextNonce++ }
-  );
-
-  return tx;
-}
-
-async function swapR2usdToUsdc(amountR2usd) {
-  const config = SEPOLIA_CONFIG;
-  const provider = new ethers.JsonRpcProvider(config.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-  const amount = ethers.parseUnits(amountR2usd.toString(), 6);
-  const router = new ethers.Contract(config.SWAP_ROUTER, UNISWAP_V2_ROUTER_ABI, wallet);
-  
-  await ensureApproval(config.R2USD_ADDRESS, config.SWAP_ROUTER, amount, wallet);
-
-  const path = [config.R2USD_ADDRESS, config.USDC_ADDRESS];
-  const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-  const amountOutMin = 0;
-
-  const tx = await router.swapExactTokensForTokens(
-    amount,
-    amountOutMin,
-    path,
-    wallet.address,
-    deadline,
-    { gasLimit: 500000, nonce: nextNonce++ }
-  );
-
-  return tx;
-}
-
-async function swapBtcToR2btc(amountBtc) {
-  const config = SEPOLIA_CONFIG;
-  const provider = new ethers.JsonRpcProvider(config.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-  const amount = ethers.parseUnits(amountBtc.toString(), 8);
-  const router = new ethers.Contract(config.BTC_SWAP_ROUTER, UNISWAP_V2_ROUTER_ABI, wallet);
-  
-  await ensureApproval(config.BTC_ADDRESS, config.BTC_SWAP_ROUTER, amount, wallet);
-
-  const path = [config.BTC_ADDRESS, config.R2BTC_ADDRESS];
-  const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-  const amountOutMin = 0;
-
-  const tx = await router.swapExactTokensForTokens(
-    amount,
-    amountOutMin,
-    path,
-    wallet.address,
-    deadline,
-    { gasLimit: 500000, nonce: nextNonce++ }
-  );
-
-  return tx;
-}
-
-async function stakeR2usd(amountR2usd) {
-  const config = SEPOLIA_CONFIG;
-  const provider = new ethers.JsonRpcProvider(config.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-  const amount = ethers.parseUnits(amountR2usd.toString(), 6);
-  const staking = new ethers.Contract(config.STAKING_CONTRACT, STAKING_ABI, wallet);
-  
-  await ensureApproval(config.R2USD_ADDRESS, config.STAKING_CONTRACT, amount, wallet);
-
-  const tx = await staking.stake(
-    amount,
-    { gasLimit: 500000, nonce: nextNonce++ }
-  );
-
-  return tx;
-}
-
-async function unstakeSr2usd(amountSr2usd) {
-  const config = SEPOLIA_CONFIG;
-  const provider = new ethers.JsonRpcProvider(config.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-  const amount = ethers.parseUnits(amountSr2usd.toString(), 6);
-  const staking = new ethers.Contract(config.STAKING_CONTRACT, STAKING_ABI, wallet);
-  
-  const tx = await staking.withdraw(
-    amount,
-    { gasLimit: 500000, nonce: nextNonce++ }
-  );
-
-  return tx;
-}
-
-async function addLiquidity(tokenA, tokenB, amountA, amountB) {
-  const config = SEPOLIA_CONFIG;
-  const provider = new ethers.JsonRpcProvider(config.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-  const router = new ethers.Contract(config.SWAP_ROUTER, UNISWAP_V2_ROUTER_ABI, wallet);
-  
-  await ensureApproval(tokenA, config.SWAP_ROUTER, amountA, wallet);
-  await ensureApproval(tokenB, config.SWAP_ROUTER, amountB, wallet);
-
-  const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-  const amountAMin = 0;
-  const amountBMin = 0;
-
-  const tx = await router.addLiquidity(
-    tokenA,
-    tokenB,
-    amountA,
-    amountB,
-    amountAMin,
-    amountBMin,
-    wallet.address,
-    deadline,
-    { gasLimit: 500000, nonce: nextNonce++ }
-  );
-
-  return tx;
-}
-
-async function removeLiquidity(tokenA, tokenB, lpAmount) {
-  const config = SEPOLIA_CONFIG;
-  const provider = new ethers.JsonRpcProvider(config.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-  const router = new ethers.Contract(config.SWAP_ROUTER, UNISWAP_V2_ROUTER_ABI, wallet);
-  const lpToken = tokenA === config.USDC_ADDRESS && tokenB === config.R2USD_ADDRESS ? config.LP_USDC_R2USD :
-                 tokenA === config.R2USD_ADDRESS && tokenB === config.sR2USD_ADDRESS ? config.LP_R2USD_sR2USD :
-                 tokenA === config.R2_ADDRESS && tokenB === config.R2USD_ADDRESS ? config.LP_R2_R2USD : null;
-  
-  if (!lpToken) throw new Error("Unsupported token pair");
-  
-  await ensureApproval(lpToken, config.SWAP_ROUTER, lpAmount, wallet);
-
-  const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-  const amountAMin = 0;
-  const amountBMin = 0;
-
-  const tx = await router.removeLiquidity(
-    tokenA,
-    tokenB,
-    lpAmount,
-    amountAMin,
-    amountBMin,
-    wallet.address,
-    deadline,
-    { gasLimit: 500000, nonce: nextNonce++ }
-  );
-
-  return tx;
-}
-
-async function main() {
-  console.log(figlet.textSync('R2 Testnet Bot'));
-  // await updateWalletData(); (moved below after walletBox is defined)
-  
-  screen = blessed.screen({
-    smartCSR: true,
-    title: 'YetiDAO - R2 Testnet Bot'
-  });
-
-  walletBox = blessed.box({
-    top: 0,
-    left: 0,
-    width: '50%',
-    height: '30%',
-    border: { type: 'line' },
-    style: {
-      border: { fg: 'cyan' }
-    }
-  });
-
-  const menu = blessed.list({
-    top: '30%',
-    left: 0,
-    width: '50%',
-    height: '70%',
-    items: getMainMenuItems(),
-    border: { type: 'line' },
-    style: {
-      selected: { bg: 'blue' },
-      border: { fg: 'cyan' }
-    },
-    keys: true,
-    mouse: true
-  });
-
-  logBox = blessed.box({
-    top: 0,
-    right: 0,
-    width: '50%',
-    height: '100%',
-    border: { type: 'line' },
-    style: {
-      border: { fg: 'cyan' }
-    },
-    scrollable: true,
-    alwaysScroll: true,
-    scrollbar: {
-      ch: ' ',
-      style: { bg: 'blue' }
-    }
-  });
-
-  screen.append(walletBox);
-  screen.append(menu);
-menu.focus();  // Auto-focus so menu is responsive
-  screen.append(logBox);
-  screen.render();
-
-  menu.on('select', async (item, index) => {
-    const selected = item.getText();
-    
-    if (selected === 'Start 24h Auto Mode') {
-      startAutoMode();
-    } 
-    else if (selected === 'Stop Bot') {
-      stopAutoMode();
-    }
-    else if (selected === 'Manual Swap USDC <> R2USD') {
-      await handleManualOperation(swapDirection ? 'USDC->R2USD' : 'R2USD->USDC');
-      swapDirection = !swapDirection;
-    }
-    else if (selected === 'Manual Swap BTC <> R2BTC') {
-      await handleManualOperation('BTC->R2BTC');
-    }
-    else if (selected === 'Manual Stake R2USD') {
-      await handleManualOperation('Stake R2USD');
-    }
-    else if (selected === 'Manual Unstake sR2USD') {
-      await handleManualOperation('Unstake sR2USD');
-    }
-    else if (selected === 'Transaction History') {
-      showTransactionHistory();
-    }
-    else if (selected === 'Clear Logs') {
-      logBox.setContent('');
-      screen.render();
-    }
-    else if (selected === 'Refresh') {
-      // await updateWalletData(); (moved below after walletBox is defined)
-    }
-    else if (selected === 'Exit') {
-      process.exit(0);
-    }
-  });
-
+// Initial UI Setup
+function main() {
+  screen = blessed.screen({ smartCSR: true, title: "DeFi CLI Terminal" });
+  walletBox = blessed.box({ top: 0, left: 0, width: '50%', height: '25%', border: { type: 'line' }, label: "Wallet Info", style: { border: { fg: 'cyan' } } });
+  logBox = blessed.log({ top: '25%', left: 0, width: '50%', height: '75%', border: { type: 'line' }, label: "Logs", style: { border: { fg: 'cyan' } } });
+  menuBox = blessed.list({ top: 0, left: '50%', width: '50%', height: '100%', border: { type: 'line' }, label: "Menu", style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } } });
+  screen.append(walletBox); screen.append(logBox); screen.append(menuBox);
+  updateWalletDisplay();
+  showMainMenu();
   screen.key(['escape', 'q', 'C-c'], () => process.exit(0));
+  updateWalletData();
 }
 
-main().catch(console.error);
+main();
