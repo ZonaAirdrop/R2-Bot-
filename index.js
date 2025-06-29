@@ -38,10 +38,9 @@ let operationsHistory = [
   { type: "Add Liquidity", amount: "100", blockNumber: "123456", txHash: "0xabc123" },
   { type: "Swap", amount: "10", blockNumber: "123457", txHash: "0xdef456" },
 ];
-let currentNonce = 0;
 let screen, walletBox, logBox, menuBox;
 
-// ========== HELPER ==========
+// ========== HELPER & PROMPT ==========
 function addLog(message, type = "info") {
   const colors = { info: "white", error: "red", success: "green", debug: "yellow" };
   const timestamp = new Date().toLocaleString();
@@ -100,238 +99,139 @@ function createPromptBox() {
 }
 let promptBox;
 
-// ========== GENERIC PROMPT ==========
-function promptInput(label, validator, callback) {
-  promptBox.input(label, '', (err, value) => {
-    if (!err && validator(value)) {
-      callback(value);
-    } else {
-      addLog("Input tidak valid.", "error");
-      showMainMenu();
+// ========== GENERIC PROMPT WITH CALLBACK ==========
+function promptStep(labels, callback) {
+  let answers = [];
+  function ask(i) {
+    if (i >= labels.length) {
+      callback(answers);
+      return;
     }
-  });
+    promptBox.input(labels[i], '', (err, value) => {
+      if (err || !value || isNaN(Number(value)) || Number(value) <= 0) {
+        addLog("Input tidak valid.", "error");
+        showMainMenu();
+        return;
+      }
+      answers.push(Number(value));
+      ask(i + 1);
+    });
+  }
+  ask(0);
 }
 
-// ========== ALL ACTIONS WITH PROMPT ==========
-
-// Swap
+// ========== ACTIONS ==========
 function swapUsdcToR2usd(done) {
-  promptBox.input('Masukkan jumlah USDC yang ingin di-swap ke R2USD:', '', (err, value) => {
-    if (!err && value && !isNaN(Number(value)) && Number(value) > 0) {
-      promptBox.input('Berapa kali swap?', '', (err2, value2) => {
-        let count = Number(value2);
-        if (!err2 && value2 && !isNaN(count) && count > 0) {
-          addLog(`Swap USDC ke R2USD sejumlah ${value} sebanyak ${count} kali (dummy action)...`, "info");
-        } else {
-          addLog("Input jumlah kali swap tidak valid.", "error");
-        }
-        done();
-      });
-    } else {
-      addLog("Jumlah tidak valid.", "error");
+  promptStep(
+    ['Masukkan jumlah USDC yang ingin di-swap ke R2USD:', 'Berapa kali swap?'],
+    ([amount, times]) => {
+      addLog(`Swap USDC ke R2USD sejumlah ${amount} sebanyak ${times} kali (dummy action)...`, "info");
       done();
     }
-  });
+  );
 }
 function swapR2usdToUsdc(done) {
-  promptBox.input('Masukkan jumlah R2USD yang ingin di-swap ke USDC:', '', (err, value) => {
-    if (!err && value && !isNaN(Number(value)) && Number(value) > 0) {
-      promptBox.input('Berapa kali swap?', '', (err2, value2) => {
-        let count = Number(value2);
-        if (!err2 && value2 && !isNaN(count) && count > 0) {
-          addLog(`Swap R2USD ke USDC sejumlah ${value} sebanyak ${count} kali (dummy action)...`, "info");
-        } else {
-          addLog("Input jumlah kali swap tidak valid.", "error");
-        }
-        done();
-      });
-    } else {
-      addLog("Jumlah tidak valid.", "error");
+  promptStep(
+    ['Masukkan jumlah R2USD yang ingin di-swap ke USDC:', 'Berapa kali swap?'],
+    ([amount, times]) => {
+      addLog(`Swap R2USD ke USDC sejumlah ${amount} sebanyak ${times} kali (dummy action)...`, "info");
       done();
     }
-  });
+  );
 }
 function swapR2ToUsdc(done) {
-  promptBox.input('Masukkan jumlah R2 yang ingin di-swap ke USDC:', '', (err, value) => {
-    if (!err && value && !isNaN(Number(value)) && Number(value) > 0) {
-      promptBox.input('Berapa kali swap?', '', (err2, value2) => {
-        let count = Number(value2);
-        if (!err2 && value2 && !isNaN(count) && count > 0) {
-          addLog(`Swap R2 ke USDC sejumlah ${value} sebanyak ${count} kali (dummy action)...`, "info");
-        } else {
-          addLog("Input jumlah kali swap tidak valid.", "error");
-        }
-        done();
-      });
-    } else {
-      addLog("Jumlah tidak valid.", "error");
+  promptStep(
+    ['Masukkan jumlah R2 yang ingin di-swap ke USDC:', 'Berapa kali swap?'],
+    ([amount, times]) => {
+      addLog(`Swap R2 ke USDC sejumlah ${amount} sebanyak ${times} kali (dummy action)...`, "info");
       done();
     }
-  });
+  );
 }
 function swapUsdcToR2(done) {
-  promptBox.input('Masukkan jumlah USDC yang ingin di-swap ke R2:', '', (err, value) => {
-    if (!err && value && !isNaN(Number(value)) && Number(value) > 0) {
-      promptBox.input('Berapa kali swap?', '', (err2, value2) => {
-        let count = Number(value2);
-        if (!err2 && value2 && !isNaN(count) && count > 0) {
-          addLog(`Swap USDC ke R2 sejumlah ${value} sebanyak ${count} kali (dummy action)...`, "info");
-        } else {
-          addLog("Input jumlah kali swap tidak valid.", "error");
-        }
-        done();
-      });
-    } else {
-      addLog("Jumlah tidak valid.", "error");
+  promptStep(
+    ['Masukkan jumlah USDC yang ingin di-swap ke R2:', 'Berapa kali swap?'],
+    ([amount, times]) => {
+      addLog(`Swap USDC ke R2 sejumlah ${amount} sebanyak ${times} kali (dummy action)...`, "info");
       done();
     }
-  });
+  );
 }
-
-// Add Liquidity
 function addR2UsdcLiquidity(done) {
-  promptBox.input('Masukkan jumlah R2 untuk Add Liquidity R2-USDC:', '', (err, amountR2) => {
-    if (!err && amountR2 && !isNaN(Number(amountR2)) && Number(amountR2) > 0) {
-      promptBox.input('Masukkan jumlah USDC untuk Add Liquidity R2-USDC:', '', (err2, amountUsdc) => {
-        if (!err2 && amountUsdc && !isNaN(Number(amountUsdc)) && Number(amountUsdc) > 0) {
-          addLog(`Add Liquidity R2-USDC: R2 ${amountR2} + USDC ${amountUsdc} (dummy action)...`, "info");
-        } else {
-          addLog("Jumlah USDC tidak valid.", "error");
-        }
-        done();
-      });
-    } else {
-      addLog("Jumlah R2 tidak valid.", "error");
+  promptStep(
+    ['Masukkan jumlah R2:', 'Masukkan jumlah USDC:'],
+    ([amountR2, amountUsdc]) => {
+      addLog(`Add Liquidity R2-USDC: R2 ${amountR2} + USDC ${amountUsdc} (dummy action)...`, "info");
       done();
     }
-  });
+  );
 }
 function addR2R2usdLiquidity(done) {
-  promptBox.input('Masukkan jumlah R2 untuk Add Liquidity R2-R2USD:', '', (err, amountR2) => {
-    if (!err && amountR2 && !isNaN(Number(amountR2)) && Number(amountR2) > 0) {
-      promptBox.input('Masukkan jumlah R2USD untuk Add Liquidity R2-R2USD:', '', (err2, amountR2usd) => {
-        if (!err2 && amountR2usd && !isNaN(Number(amountR2usd)) && Number(amountR2usd) > 0) {
-          addLog(`Add Liquidity R2-R2USD: R2 ${amountR2} + R2USD ${amountR2usd} (dummy action)...`, "info");
-        } else {
-          addLog("Jumlah R2USD tidak valid.", "error");
-        }
-        done();
-      });
-    } else {
-      addLog("Jumlah R2 tidak valid.", "error");
+  promptStep(
+    ['Masukkan jumlah R2:', 'Masukkan jumlah R2USD:'],
+    ([amountR2, amountR2usd]) => {
+      addLog(`Add Liquidity R2-R2USD: R2 ${amountR2} + R2USD ${amountR2usd} (dummy action)...`, "info");
       done();
     }
-  });
+  );
 }
 function addUsdcR2usdLiquidity(done) {
-  promptBox.input('Masukkan jumlah USDC untuk Add Liquidity USDC-R2USD:', '', (err, amountUsdc) => {
-    if (!err && amountUsdc && !isNaN(Number(amountUsdc)) && Number(amountUsdc) > 0) {
-      promptBox.input('Masukkan jumlah R2USD untuk Add Liquidity USDC-R2USD:', '', (err2, amountR2usd) => {
-        if (!err2 && amountR2usd && !isNaN(Number(amountR2usd)) && Number(amountR2usd) > 0) {
-          addLog(`Add Liquidity USDC-R2USD: USDC ${amountUsdc} + R2USD ${amountR2usd} (dummy action)...`, "info");
-        } else {
-          addLog("Jumlah R2USD tidak valid.", "error");
-        }
-        done();
-      });
-    } else {
-      addLog("Jumlah USDC tidak valid.", "error");
+  promptStep(
+    ['Masukkan jumlah USDC:', 'Masukkan jumlah R2USD:'],
+    ([amountUsdc, amountR2usd]) => {
+      addLog(`Add Liquidity USDC-R2USD: USDC ${amountUsdc} + R2USD ${amountR2usd} (dummy action)...`, "info");
       done();
     }
-  });
+  );
 }
 function addR2usdSR2usdLiquidity(done) {
-  promptBox.input('Masukkan jumlah R2USD untuk Add Liquidity R2USD-sR2USD:', '', (err, amountR2usd) => {
-    if (!err && amountR2usd && !isNaN(Number(amountR2usd)) && Number(amountR2usd) > 0) {
-      promptBox.input('Masukkan jumlah sR2USD untuk Add Liquidity R2USD-sR2USD:', '', (err2, amountSR2usd) => {
-        if (!err2 && amountSR2usd && !isNaN(Number(amountSR2usd)) && Number(amountSR2usd) > 0) {
-          addLog(`Add Liquidity R2USD-sR2USD: R2USD ${amountR2usd} + sR2USD ${amountSR2usd} (dummy action)...`, "info");
-        } else {
-          addLog("Jumlah sR2USD tidak valid.", "error");
-        }
-        done();
-      });
-    } else {
-      addLog("Jumlah R2USD tidak valid.", "error");
+  promptStep(
+    ['Masukkan jumlah R2USD:', 'Masukkan jumlah sR2USD:'],
+    ([amountR2usd, amountSR2usd]) => {
+      addLog(`Add Liquidity R2USD-sR2USD: R2USD ${amountR2usd} + sR2USD ${amountSR2usd} (dummy action)...`, "info");
       done();
     }
-  });
+  );
 }
-
-// Remove Liquidity
 function removeR2UsdcLiquidity(done) {
-  promptBox.input('Masukkan jumlah LP R2-USDC yang ingin di-remove:', '', (err, amount) => {
-    if (!err && amount && !isNaN(Number(amount)) && Number(amount) > 0) {
-      addLog(`Remove Liquidity R2-USDC: LP ${amount} (dummy action)...`, "info");
-    } else {
-      addLog("Jumlah LP tidak valid.", "error");
-    }
+  promptStep(['Masukkan jumlah LP R2-USDC yang ingin di-remove:'], ([amount]) => {
+    addLog(`Remove Liquidity R2-USDC: LP ${amount} (dummy action)...`, "info");
     done();
   });
 }
 function removeR2R2usdLiquidity(done) {
-  promptBox.input('Masukkan jumlah LP R2-R2USD yang ingin di-remove:', '', (err, amount) => {
-    if (!err && amount && !isNaN(Number(amount)) && Number(amount) > 0) {
-      addLog(`Remove Liquidity R2-R2USD: LP ${amount} (dummy action)...`, "info");
-    } else {
-      addLog("Jumlah LP tidak valid.", "error");
-    }
+  promptStep(['Masukkan jumlah LP R2-R2USD yang ingin di-remove:'], ([amount]) => {
+    addLog(`Remove Liquidity R2-R2USD: LP ${amount} (dummy action)...`, "info");
     done();
   });
 }
 function removeUsdcR2usdLiquidity(done) {
-  promptBox.input('Masukkan jumlah LP USDC-R2USD yang ingin di-remove:', '', (err, amount) => {
-    if (!err && amount && !isNaN(Number(amount)) && Number(amount) > 0) {
-      addLog(`Remove Liquidity USDC-R2USD: LP ${amount} (dummy action)...`, "info");
-    } else {
-      addLog("Jumlah LP tidak valid.", "error");
-    }
+  promptStep(['Masukkan jumlah LP USDC-R2USD yang ingin di-remove:'], ([amount]) => {
+    addLog(`Remove Liquidity USDC-R2USD: LP ${amount} (dummy action)...`, "info");
     done();
   });
 }
 function removeR2usdSR2usdLiquidity(done) {
-  promptBox.input('Masukkan jumlah LP R2USD-sR2USD yang ingin di-remove:', '', (err, amount) => {
-    if (!err && amount && !isNaN(Number(amount)) && Number(amount) > 0) {
-      addLog(`Remove Liquidity R2USD-sR2USD: LP ${amount} (dummy action)...`, "info");
-    } else {
-      addLog("Jumlah LP tidak valid.", "error");
-    }
+  promptStep(['Masukkan jumlah LP R2USD-sR2USD yang ingin di-remove:'], ([amount]) => {
+    addLog(`Remove Liquidity R2USD-sR2USD: LP ${amount} (dummy action)...`, "info");
     done();
   });
 }
-
-// Stake
 function stakeR2usd(done) {
-  promptBox.input('Masukkan jumlah R2USD yang ingin di-stake:', '', (err, amount) => {
-    if (!err && amount && !isNaN(Number(amount)) && Number(amount) > 0) {
-      addLog(`Stake R2USD: ${amount} (dummy action)...`, "info");
-    } else {
-      addLog("Jumlah tidak valid.", "error");
-    }
+  promptStep(['Masukkan jumlah R2USD yang ingin di-stake:'], ([amount]) => {
+    addLog(`Stake R2USD: ${amount} (dummy action)...`, "info");
     done();
   });
 }
-
-// Unstake
 function unstakeSR2usd(done) {
-  promptBox.input('Masukkan jumlah sR2USD yang ingin di-unstake:', '', (err, amount) => {
-    if (!err && amount && !isNaN(Number(amount)) && Number(amount) > 0) {
-      addLog(`Unstake sR2USD: ${amount} (dummy action)...`, "info");
-    } else {
-      addLog("Jumlah tidak valid.", "error");
-    }
+  promptStep(['Masukkan jumlah sR2USD yang ingin di-unstake:'], ([amount]) => {
+    addLog(`Unstake sR2USD: ${amount} (dummy action)...`, "info");
     done();
   });
 }
-
-// Deposit BTC
 function depositBtc(done) {
-  promptBox.input('Masukkan jumlah BTC yang ingin di-deposit:', '', (err, amount) => {
-    if (!err && amount && !isNaN(Number(amount)) && Number(amount) > 0) {
-      addLog(`Deposit BTC: ${amount} (dummy action)...`, "info");
-    } else {
-      addLog("Jumlah tidak valid.", "error");
-    }
+  promptStep(['Masukkan jumlah BTC yang ingin di-deposit:'], ([amount]) => {
+    addLog(`Deposit BTC: ${amount} (dummy action)...`, "info");
     done();
   });
 }
@@ -384,14 +284,13 @@ function showSimpleSubmenu(title, items, actions = {}) {
   });
 }
 
-// Submenu definitions
+// ========== SUBMENU DEFINITIONS ==========
 function showOtomatisBotSubMenu() {
   showSimpleSubmenu("Otomatis Bot", [
     "Jalankan Bot Otomatis (Soon)",
     "Back to Main Menu"
   ]);
 }
-
 function showManualSwapUSDC_R2USD_SubMenu() {
   showSimpleSubmenu(
     "Swap USDC <> R2USD",
@@ -406,7 +305,6 @@ function showManualSwapUSDC_R2USD_SubMenu() {
     }
   );
 }
-
 function showManualSwapR2_USDC_SubMenu() {
   showSimpleSubmenu(
     "Swap R2 <> USDC",
@@ -421,7 +319,6 @@ function showManualSwapR2_USDC_SubMenu() {
     }
   );
 }
-
 function showAddLiquiditySubMenu() {
   showSimpleSubmenu(
     "Add Liquidity",
