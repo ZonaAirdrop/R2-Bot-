@@ -148,16 +148,16 @@ async function updateWalletData() {
 
 function updateWalletDisplay() {
   const shortAddress = walletInfo.address ? `${walletInfo.address.slice(0, 6)}...${walletInfo.address.slice(-4)}` : "N/A";
-  const content = `┌── Address   : {yellow-fg}${shortAddress}{/yellow-fg}
-│   ├── ETH           : {light-green-fg}${Number(walletInfo.balances.native).toFixed(4)}{/light-green-fg}
-│   ├── USDC          : {light-green-fg}${Number(walletInfo.balances.USDC).toFixed(2)}{/light-green-fg}
-│   ├── R2USD         : {light-green-fg}${Number(walletInfo.balances.R2USD).toFixed(4)}{/light-green-fg}
-│   ├── sR2USD        : {light-green-fg}${Number(walletInfo.balances.sR2USD).toFixed(4)}{/light-green-fg}
-│   ├── R2            : {light-green-fg}${Number(walletInfo.balances.R2).toFixed(4)}{/light-green-fg}
-│   ├── LP R2USD-sR2USD : {light-green-fg}${Number(walletInfo.balances.LP_R2USD_sR2USD).toFixed(4)}{/light-green-fg}
-│   ├── LP USDC-R2USD : {light-green-fg}${Number(walletInfo.balances.LP_USDC_R2USD).toFixed(4)}{/light-green-fg}
-│   ├── LP R2-R2USD   : {light-green-fg}${Number(walletInfo.balances.LP_R2_R2USD).toFixed(4)}{/light-green-fg}
-│   └── BTC           : {light-green-fg}${Number(walletInfo.balances.BTC).toFixed(8)}{/light-green-fg}
+  const content = `┌── Address   : {bright-yellow-fg}${shortAddress}{/bright-yellow-fg}
+│   ├── ETH           : {bright-green-fg}${Number(walletInfo.balances.native).toFixed(4)}{/bright-green-fg}
+│   ├── USDC          : {bright-green-fg}${Number(walletInfo.balances.USDC).toFixed(2)}{/bright-green-fg}
+│   ├── R2USD         : {bright-green-fg}${Number(walletInfo.balances.R2USD).toFixed(4)}{/bright-green-fg}
+│   ├── sR2USD        : {bright-green-fg}${Number(walletInfo.balances.sR2USD).toFixed(4)}{/bright-green-fg}
+│   ├── R2            : {bright-green-fg}${Number(walletInfo.balances.R2).toFixed(4)}{/bright-green-fg}
+│   ├── LP R2USD-sR2USD : {bright-green-fg}${Number(walletInfo.balances.LP_R2USD_sR2USD).toFixed(4)}{/bright-green-fg}
+│   ├── LP USDC-R2USD : {bright-green-fg}${Number(walletInfo.balances.LP_USDC_R2USD).toFixed(4)}{/bright-green-fg}
+│   ├── LP R2-R2USD   : {bright-green-fg}${Number(walletInfo.balances.LP_R2_R2USD).toFixed(4)}{/bright-green-fg}
+│   └── BTC           : {bright-green-fg}${Number(walletInfo.balances.BTC).toFixed(8)}{/bright-green-fg}
 └── Network        : {bright-cyan-fg}${CONFIG.NETWORK_NAME}{/bright-cyan-fg}`;
   walletBox.setContent(content);
   screen.render();
@@ -433,16 +433,8 @@ async function executeDepositBTC(amount, times, minDelay, maxDelay) {
 
 // UI Functions
 function showMainMenu() {
-  menuBox.style = {
-  fg: 'light-cyan',
-  selected: { bg: 'light-cyan', fg: 'black' },
-  item: { fg: 'light-cyan' },
-  focus: { bg: 'light-cyan' }
-};
-
-menuBox.setItems([
-    "1. Otomatis Bot",
-    "2. Swap USDC <> R2USD",
+  menuBox.setItems([
+    "1. Swap USDC <> R2USD",
     "2. Swap R2 <> USDC",
     "3. Swap BTC <> R2BTC",
     "4. Add Liquidity",
@@ -456,11 +448,9 @@ menuBox.setItems([
     "12. Exit"
   ]);
   menuBox.focus();
-  menuBox.key(["enter"], function() { menuBox.emit("select", menuBox.items[menuBox.selected], menuBox.selected); });
   menuBox.on('select', (item, index) => {
     switch (index) {
-      case 0: showAutoBotForm(); break;
-      case 1: showSwapMenu("USDC", "R2USD"); break;
+      case 0: showSwapMenu("USDC", "R2USD"); break;
       case 1: showSwapMenu("R2", "USDC"); break;
       case 2: showSwapMenu("BTC", "R2BTC"); break;
       case 3: showLiquidityMenu("add"); break;
@@ -484,8 +474,8 @@ function showForm(title, fields, onSubmit) {
     left: 'center',
     width: '60%',
     height: '60%',
-    border: { type: 'line' }, style: { fg: 'cyan' },
-    style: { border: { fg: 'cyan' }, fg: 'cyan' }
+    border: { type: 'line' },
+    style: { border: { fg: 'cyan' } }
   });
 
   const inputs = {};
@@ -509,7 +499,7 @@ function showForm(title, fields, onSubmit) {
       left: 2,
       width: '90%',
       height: 1,
-      inputOnFocus: true, keys: true, mouse: true, style: { fg: 'magenta', border: { fg: 'cyan' }, focus: { fg: 'magenta', border: { fg: 'magenta' } } }
+      inputOnFocus: true
     });
   });
 
@@ -520,7 +510,7 @@ function showForm(title, fields, onSubmit) {
     width: 10,
     height: 1,
     content: 'Submit',
-    style: { bg: 'cyan', fg: 'black', hover: { bg: 'light-cyan' } }
+    style: { bg: 'green' }
   });
 
   const cancel = blessed.button({
@@ -548,7 +538,6 @@ function showForm(title, fields, onSubmit) {
   });
 
   screen.append(form);
-  form.key(['escape'], () => { screen.remove(form); showMainMenu(); });
   inputs[fields[0].ref].focus();
   screen.render();
 }
@@ -561,7 +550,7 @@ function showLiquidityMenu(action) {
     left: 'center',
     width: '60%',
     height: '60%',
-    border: { type: 'line' }, style: { fg: 'cyan' },
+    border: { type: 'line' },
     style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
     items: [
       `${action === "add" ? "Add" : "Remove"} R2-USDC Liquidity`,
@@ -574,7 +563,6 @@ function showLiquidityMenu(action) {
 
   screen.append(menu);
   menu.focus();
-  menu.key(["enter"], function() { menu.emit("select", menu.items[menu.selected], menu.selected); });
 
   menu.on('select', (item, idx) => {
     if (idx === 4) {
@@ -682,8 +670,8 @@ function showTransactionHistory() {
     left: 'center',
     width: '80%',
     height: '80%',
-    border: { type: 'line' }, style: { fg: 'cyan' },
-    style: { border: { fg: 'cyan' }, fg: 'cyan' },
+    border: { type: 'line' },
+    style: { border: { fg: 'cyan' } },
     scrollable: true,
     alwaysScroll: true,
     scrollbar: {
@@ -749,8 +737,8 @@ function initApp() {
     left: 0,
     width: '30%',
     height: '40%',
-    border: { type: 'line' }, style: { fg: 'cyan' },
-    style: { border: { fg: 'cyan' }, fg: 'cyan' }
+    border: { type: 'line' },
+    style: { border: { fg: 'cyan' } }
   });
 
   // Create log box
@@ -760,8 +748,8 @@ function initApp() {
     left: '30%',
     width: '70%',
     height: '40%',
-    border: { type: 'line' }, style: { fg: 'cyan' },
-    style: { border: { fg: 'cyan' }, fg: 'cyan' },
+    border: { type: 'line' },
+    style: { border: { fg: 'cyan' } },
     scrollable: true,
     scrollbar: {
       ch: ' ',
@@ -778,7 +766,7 @@ function initApp() {
     left: 0,
     width: '100%',
     height: '60%',
-    border: { type: 'line' }, style: { fg: 'cyan' },
+    border: { type: 'line' },
     style: { 
       selected: { bg: 'blue' }, 
       border: { fg: 'cyan' } 
@@ -797,38 +785,3 @@ function initApp() {
 
 // Start the application
 initApp();
-
-
-function showAutoBotForm() {
-  showForm("Otomatis Bot", [
-    { label: "Swap Amount USDC → R2USD", ref: "swapAmount" },
-    { label: "Add R2 Amount", ref: "addAmountR2" },
-    { label: "Add R2USD Amount", ref: "addAmountR2USD" },
-    { label: "Remove Liquidity % (20-100)", ref: "removePercent" },
-    { label: "Delay antar aksi (detik)", ref: "delayBetween" }
-  ], (data) => {
-    runAutoBot(data);
-  });
-}
-
-async function runAutoBot(config) {
-  async function delay(seconds) {
-    addLog(`⏳ Delay ${seconds}s...`, "debug");
-    return new Promise(resolve => setTimeout(resolve, seconds * 1000));
-  }
-
-  async function runTasksOnce() {
-    await executeSwap("USDC", "R2USD", parseFloat(config.swapAmount), 1, 0, 0);
-    await delay(parseInt(config.delayBetween));
-    await executeAddLiquidity("R2", "R2USD", parseFloat(config.addAmountR2), parseFloat(config.addAmountR2USD), 1, 0, 0);
-    await delay(parseInt(config.delayBetween));
-    await executeRemoveLiquidity("R2USD", "sR2USD", parseInt(config.removePercent), 1, 0, 0);
-  }
-
-  while (true) {
-    addLog("🚀 Mulai Otomatis Bot Session", "info");
-    await runTasksOnce();
-    addLog("✅ Selesai satu sesi. Bot akan tidur 24 jam...", "info");
-    await delay(24 * 60 * 60);
-  }
-}
