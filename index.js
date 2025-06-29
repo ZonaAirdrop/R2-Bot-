@@ -75,32 +75,19 @@ class AllFeatureBot {
       console.log(
         chalk.white(
           "1. Swap USDC <> R2USD\n" +
-            "2. Swap R2 <> USDC\n" +
-            "3. Swap BTC <> R2BTC\n" +
-            "4. Add Liquidity\n" +
-            "5. Remove Liquidity\n" +
-            "6. Stake R2USD\n" +
-            "7. Unstake sR2USD\n" +
-            "8. Deposit BTC\n" +
-            "9. Run All Features\n" +
-            "10. Exit\n"
+          "2. Swap R2 <> USDC\n" +
+          "3. Swap BTC <> R2BTC\n" +
+          "4. Add Liquidity\n" +
+          "5. Remove Liquidity\n" +
+          "6. Stake R2USD\n" +
+          "7. Unstake sR2USD\n" +
+          "8. Deposit BTC\n" +
+          "9. Run All Features\n" +
+          "10. Exit\n"
         )
       );
       const choice = await this.prompt("> Choose [1-10]: ", (ans) => {
-        if (
-          [
-            "1",
-            "2",
-            "3",
-            "4",
-            "5",
-            "6",
-            "7",
-            "8",
-            "9",
-            "10",
-          ].includes(ans)
-        )
+        if (["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].includes(ans))
           return true;
         return "Pilihan tidak valid!";
       });
@@ -149,6 +136,7 @@ class AllFeatureBot {
       await this.prompt(
         "Min Delay (detik) antar transaksi? ",
         (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
+      )
     );
     const maxDelay = Number(
       await this.prompt(
