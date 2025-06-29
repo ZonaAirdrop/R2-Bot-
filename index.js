@@ -179,7 +179,7 @@ class AllFeatureBot {
     const maxDelay = Number(
       await this.prompt(
         "Max Delay (detik) antar transaksi? ",
-        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay"
+        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
       )
     );
 
