@@ -197,11 +197,17 @@ function showClearLogsSubMenu() {
       "Clear Log Sekarang",
       "Back to Main Menu"
     ],
-    style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
+    style: {
+      selected: { bg: 'cyan', fg: 'black' },
+      border: { fg: 'cyan' },
+      item: { fg: 'cyan' },
+      focus: { bg: 'cyan' }
+    },
     keys: true, mouse: true, vi: true
   });
   screen.append(subMenu);
   subMenu.focus();
+  screen.render();
   subMenu.key(['escape', 'q', 'C-c'], () => {
     screen.remove(subMenu); showMainMenu();
   });
@@ -228,11 +234,17 @@ function showRefreshSubMenu() {
       "Refresh Balance & Data",
       "Back to Main Menu"
     ],
-    style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
+    style: {
+      selected: { bg: 'cyan', fg: 'black' },
+      border: { fg: 'cyan' },
+      item: { fg: 'cyan' },
+      focus: { bg: 'cyan' }
+    },
     keys: true, mouse: true, vi: true
   });
   screen.append(subMenu);
   subMenu.focus();
+  screen.render();
   subMenu.key(['escape', 'q', 'C-c'], () => {
     screen.remove(subMenu); showMainMenu();
   });
@@ -257,11 +269,17 @@ function showSimpleSubmenu(title, items) {
     border: { type: 'line' },
     label: title,
     items,
-    style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
+    style: {
+      selected: { bg: 'cyan', fg: 'black' },
+      border: { fg: 'cyan' },
+      item: { fg: 'cyan' },
+      focus: { bg: 'cyan' }
+    },
     keys: true, mouse: true, vi: true
   });
   screen.append(subMenu);
   subMenu.focus();
+  screen.render();
   subMenu.key(['escape', 'q', 'C-c'], () => {
     screen.remove(subMenu); showMainMenu();
   });
@@ -293,6 +311,7 @@ function showMainMenu() {
   ]);
   menuBox.select(0);
   menuBox.focus();
+  screen.render();
   menuBox.key(['escape', 'q', 'C-c'], () => process.exit(0));
   menuBox.on('select', (item, index) => {
     switch (index) {
@@ -310,7 +329,6 @@ function showMainMenu() {
       case 11: process.exit(0); break;
     }
   });
-  screen.render();
 }
 
 // ========== INIT APP ==========
@@ -361,7 +379,12 @@ function initApp() {
     width: '100%',
     height: '60%',
     border: { type: 'line' },
-    style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
+    style: {
+      selected: { bg: 'cyan', fg: 'black' },
+      item: { fg: 'cyan' },
+      border: { fg: 'cyan' },
+      focus: { bg: 'cyan' }
+    },
     keys: true,
     mouse: true,
     vi: true
