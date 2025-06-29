@@ -16,17 +16,6 @@ const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
 const CONFIG = {
   RPC_URL: RPC_URL,
-  USDC_ADDRESS: "0xc7BcCf452965Def7d5D9bF02943e3348F758D3CB",
-  BTC_ADDRESS: "0x0f3B4ae3f2b63B21b12e423444d065CC82e3DfA5",
-  R2USD_ADDRESS: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",
-  sR2USD_ADDRESS: "0x006CbF409CA275bA022111dB32BDAE054a97d488",
-  R2_ADDRESS: "0xb816bB88f836EA75Ca4071B46FF285f690C43bb7",
-  SWAP_ROUTER: "0x47d1B0623bB3E557bF8544C159c9ae51D091F8a2",
-  BTC_SWAP_ROUTER: "0x23b2615d783e16f14b62efa125306c7c69b4941a",
-  STAKING_CONTRACT: "0x006cbf409ca275ba022111db32bdae054a97d488",
-  LP_R2USD_sR2USD: "0xee567fe1712faf6149d80da1e6934e354124cfe3",
-  LP_USDC_R2USD: "0xee567fe1712faf6149d80da1e6934e354124cfe3",
-  LP_R2_R2USD: "0xee567fe1712faf6149d80da1e6934e354124cfe3",
   NETWORK_NAME: "Sepolia Testnet"
 };
 
@@ -45,7 +34,11 @@ let walletInfo = {
   status: "Ready"
 };
 
-let operationsHistory = [];
+let operationsHistory = [
+  { type: "Add Liquidity", amount: "100", blockNumber: "123456", txHash: "0xabc123" },
+  { type: "Swap", amount: "10", blockNumber: "123457", txHash: "0xdef456" },
+  // Tambahkan transaksi dummy/real di sini jika ingin
+];
 let currentNonce = 0;
 let screen, walletBox, logBox, menuBox;
 
@@ -77,7 +70,7 @@ function updateWalletDisplay() {
 }
 
 async function updateWalletData() {
-  // Dummy for demo
+  // Dummy untuk demo, bisa ganti dengan fetch asli
   walletInfo.balances.native = "1.2345";
   walletInfo.balances.USDC = "1000";
   walletInfo.balances.BTC = "0.005";
@@ -177,85 +170,48 @@ function showDepositBTCSubMenu() {
   ]);
 }
 
-function showTransactionHistorySubMenu() {
-  showSimpleSubmenu("Transaction History", [
-    "Lihat Riwayat Transaksi (Soon)",
-    "Back to Main Menu"
-  ]);
-}
+// ========== TRANSACTION HISTORY & CLEAR LOGS ==========
 
-function showClearLogsSubMenu() {
-  const subMenu = blessed.list({
+function showTransactionHistoryBox() {
+  const historyBox = blessed.box({
     parent: screen,
     top: 'center',
     left: 'center',
-    width: '40%',
-    height: 6,
+    width: '80%',
+    height: '80%',
     border: { type: 'line' },
-    label: 'Clear Logs',
-    items: [
-      "Clear Log Sekarang",
-      "Back to Main Menu"
-    ],
-    style: {
-      selected: { bg: 'cyan', fg: 'black' },
-      border: { fg: 'cyan' },
-      item: { fg: 'cyan' },
-      focus: { bg: 'cyan' }
-    },
-    keys: true, mouse: true, vi: true
+    label: 'Transaction History',
+    style: { border: { fg: 'cyan' } },
+    scrollable: true,
+    alwaysScroll: true,
+    keys: true,
+    mouse: true,
+    vi: true,
+    scrollbar: { ch: ' ', style: { bg: 'cyan' } }
   });
-  screen.append(subMenu);
-  subMenu.focus();
+
+  const content = operationsHistory.length
+    ? operationsHistory.map((op, i) => `[${i+1}] | ${op.type} | Amount: ${op.amount || '-'} | Block: ${op.blockNumber || '-'} | Tx: ${op.txHash || '-'}`).join('\n')
+    : "No transaction history.";
+
+  historyBox.setContent(content);
+
+  screen.append(historyBox);
+  historyBox.focus();
   screen.render();
-  subMenu.key(['escape', 'q', 'C-c'], () => {
-    screen.remove(subMenu); showMainMenu();
-  });
-  subMenu.on('select', (item, idx) => {
-    if (idx === 1) {
-      screen.remove(subMenu); showMainMenu(); return;
-    }
-    logBox.setContent(""); screen.render();
-    addLog("Log telah dibersihkan.", "success");
-    screen.remove(subMenu); showMainMenu();
+
+  historyBox.key(['escape', 'q', 'C-c', 'enter'], () => {
+    screen.remove(historyBox);
+    showMainMenu();
   });
 }
 
-function showRefreshSubMenu() {
-  const subMenu = blessed.list({
-    parent: screen,
-    top: 'center',
-    left: 'center',
-    width: '40%',
-    height: 6,
-    border: { type: 'line' },
-    label: 'Refresh',
-    items: [
-      "Refresh Balance & Data",
-      "Back to Main Menu"
-    ],
-    style: {
-      selected: { bg: 'cyan', fg: 'black' },
-      border: { fg: 'cyan' },
-      item: { fg: 'cyan' },
-      focus: { bg: 'cyan' }
-    },
-    keys: true, mouse: true, vi: true
-  });
-  screen.append(subMenu);
-  subMenu.focus();
+function clearLogsAndReturn() {
+  logBox.setContent("");
   screen.render();
-  subMenu.key(['escape', 'q', 'C-c'], () => {
-    screen.remove(subMenu); showMainMenu();
-  });
-  subMenu.on('select', (item, idx) => {
-    if (idx === 1) {
-      screen.remove(subMenu); showMainMenu(); return;
-    }
-    updateWalletData();
-    addLog("Balance/data telah direfresh (dummy).", "success");
-    screen.remove(subMenu); showMainMenu();
-  });
+  addLog("Log telah dibersihkan.", "success");
+  // Langsung kembali ke main menu (tanpa box/menu apapun)
+  showMainMenu();
 }
 
 // ====== SUBMENU GENERIC ======
@@ -323,9 +279,12 @@ function showMainMenu() {
       case 5: showStakeR2USDSubMenu(); break;
       case 6: showUnstakeSR2USDSubMenu(); break;
       case 7: showDepositBTCSubMenu(); break;
-      case 8: showTransactionHistorySubMenu(); break;
-      case 9: showClearLogsSubMenu(); break;
-      case 10: showRefreshSubMenu(); break;
+      case 8: showTransactionHistoryBox(); break; // langsung tampilkan history
+      case 9: clearLogsAndReturn(); break;        // langsung clear log
+      case 10:
+        updateWalletData();
+        addLog("Balance/data telah direfresh (dummy).", "success");
+        break;
       case 11: process.exit(0); break;
     }
   });
@@ -369,7 +328,7 @@ function initApp() {
     border: { type: 'line' },
     style: { border: { fg: 'cyan' } },
     scrollable: true,
-    scrollbar: { ch: ' ', style: { bg: 'blue' } }
+    scrollbar: { ch: ' ', style: { bg: 'cyan' } }
   });
 
   menuBox = blessed.list({
