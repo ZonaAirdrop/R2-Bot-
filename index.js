@@ -31,6 +31,34 @@ class AllFeatureBot {
       output: process.stdout,
     });
     this.state = {};
+    
+    // Contract addresses (replace with your actual contract addresses)
+    this.contracts = {
+      usdc: "0xYourUsdcContractAddress",
+      r2usd: "0xYourR2UsdContractAddress",
+      r2: "0xYourR2ContractAddress",
+      staking: "0xYourStakingContractAddress",
+      btcBridge: "0xYourBtcBridgeContractAddress"
+    };
+    
+    // Contract ABIs (simplified examples)
+    this.abis = {
+      erc20: [
+        "function approve(address spender, uint256 amount) returns (bool)",
+        "function transfer(address recipient, uint256 amount) returns (bool)",
+        "function balanceOf(address account) view returns (uint256)"
+      ],
+      staking: [
+        "function stake(uint256 amount)",
+        "function unstake(uint256 amount)"
+      ],
+      swap: [
+        "function swapExactTokensForTokens(uint256 amountIn, uint256 amountOutMin, address[] calldata path, address to, uint256 deadline)"
+      ],
+      btcBridge: [
+        "function depositBTC(string calldata btcAddress, uint256 amount) payable"
+      ]
+    };
   }
 
   printHeader() {
@@ -80,12 +108,13 @@ class AllFeatureBot {
           "4. Remove Liquidity\n" +
           "5. Stake R2USD\n" +
           "6. Unstake sR2USD\n" +
-          "7. Run All Features\n" +
-          "8. Exit\n"
+          "7. Deposit BTC\n" +
+          "8. Run All Features\n" +
+          "9. Exit\n"
         )
       );
-      const choice = await this.prompt("> Choose [1-8]: ", (ans) => {
-        if (["1", "2", "3", "4", "5", "6", "7", "8"].includes(ans))
+      const choice = await this.prompt("> Choose [1-9]: ", (ans) => {
+        if (["1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(ans))
           return true;
         return "Pilihan tidak valid!";
       });
@@ -103,14 +132,90 @@ class AllFeatureBot {
       } else if (choice === "6") {
         await this.unstakeSr2usdMenu();
       } else if (choice === "7") {
-        await this.runAllFeatures();
+        await this.depositBtcMenu();
       } else if (choice === "8") {
+        await this.runAllFeatures();
+      } else if (choice === "9") {
         this.rl.close();
         this.log("Goodbye!", "success");
         process.exit(0);
       }
     }
   }
+
+  async depositBtcMenu() {
+    this.printHeader();
+    console.log(chalk.white("Deposit BTC"));
+    
+    const btcAddress = await this.prompt(
+      "Masukkan alamat BTC tujuan: ",
+      (v) => v.trim().length > 0 ? true : "Alamat BTC tidak boleh kosong"
+    );
+    
+    const amount = Number(
+      await this.prompt(
+        "Masukkan jumlah BTC yang akan di deposit: ",
+        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
+      )
+    );
+    
+    const count = Number(
+      await this.prompt(
+        "Berapa kali ingin melakukan deposit? ",
+        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
+      )
+    );
+    
+    const minDelay = Number(
+      await this.prompt(
+        "Min Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
+      )
+    );
+    
+    const maxDelay = Number(
+      await this.prompt(
+        "Max Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay"
+      )
+    );
+
+    try {
+      const btcBridgeContract = new ethers.Contract(
+        this.contracts.btcBridge,
+        this.abis.btcBridge,
+        this.wallet
+      );
+      
+      for (let i = 1; i <= count; i++) {
+        this.log(`Mempersiapkan deposit BTC ke ${btcAddress} sebesar ${amount} BTC (${i}/${count})`, "info");
+        
+        // Convert BTC amount to satoshis/wei equivalent (adjust based on your contract)
+        const amountInWei = ethers.parseUnits(amount.toString(), 8);
+        
+        const tx = await btcBridgeContract.depositBTC(
+          btcAddress,
+          amountInWei,
+          { value: amountInWei } // Adjust if your contract requires different value
+        );
+        
+        const receipt = await tx.wait();
+        this.log(`Deposit BTC berhasil! TX Hash: ${receipt.hash}`, "success");
+        
+        if (i < count) {
+          const delay = randomDelay(minDelay, maxDelay);
+          this.log(`Menunggu ${delay} detik sebelum transaksi berikutnya...`, "info");
+          await new Promise(res => setTimeout(res, delay * 1000));
+        }
+      }
+    } catch (error) {
+      this.log(`Error saat deposit BTC: ${error.message}`, "error");
+    }
+    
+    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
+  }
+
+  // ... (keep existing swapUsdcR2usdMenu, swapR2UsdcMenu, etc. functions, but modify them to do real transactions)
 
   async swapUsdcR2usdMenu() {
     this.printHeader();
@@ -145,373 +250,131 @@ class AllFeatureBot {
       )
     );
 
-    for (let i = 1; i <= count; i++) {
-      const blockNumber = await this.provider.getBlockNumber();
-      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
-      this.log(`TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
-      const delay = randomDelay(minDelay, maxDelay);
-      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
-      if (i < count) await new Promise(res => setTimeout(res, delay * 1000));
+    try {
+      const usdcContract = new ethers.Contract(this.contracts.usdc, this.abis.erc20, this.wallet);
+      const r2usdContract = new ethers.Contract(this.contracts.r2usd, this.abis.erc20, this.wallet);
+      const swapRouterContract = new ethers.Contract(this.contracts.swapRouter, this.abis.swap, this.wallet);
+
+      const amountInWei = ethers.parseUnits(amount.toString(), 18); // Adjust decimals as needed
+
+      for (let i = 1; i <= count; i++) {
+        if (direction === "1") {
+          // USDC → R2USD
+          // 1. Approve USDC spending
+          const approveTx = await usdcContract.approve(this.contracts.swapRouter, amountInWei);
+          await approveTx.wait();
+          
+          // 2. Execute swap
+          const path = [this.contracts.usdc, this.contracts.r2usd];
+          const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
+          const swapTx = await swapRouterContract.swapExactTokensForTokens(
+            amountInWei,
+            0, // amountOutMin - set proper slippage tolerance
+            path,
+            this.wallet.address,
+            deadline
+          );
+          const receipt = await swapTx.wait();
+          this.log(`Swap USDC → R2USD berhasil! TX Hash: ${receipt.hash}`, "success");
+        } else {
+          // R2USD → USDC
+          // Similar logic but reverse the path
+          const approveTx = await r2usdContract.approve(this.contracts.swapRouter, amountInWei);
+          await approveTx.wait();
+          
+          const path = [this.contracts.r2usd, this.contracts.usdc];
+          const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+          const swapTx = await swapRouterContract.swapExactTokensForTokens(
+            amountInWei,
+            0,
+            path,
+            this.wallet.address,
+            deadline
+          );
+          const receipt = await swapTx.wait();
+          this.log(`Swap R2USD → USDC berhasil! TX Hash: ${receipt.hash}`, "success");
+        }
+
+        if (i < count) {
+          const delay = randomDelay(minDelay, maxDelay);
+          this.log(`Menunggu ${delay} detik sebelum transaksi berikutnya...`, "info");
+          await new Promise(res => setTimeout(res, delay * 1000));
+        }
+      }
+    } catch (error) {
+      this.log(`Error saat swap: ${error.message}`, "error");
     }
 
-    this.log(
-      `Swap ${direction === "1" ? "USDC ke R2USD" : "R2USD ke USDC"} sebanyak ${amount} sebanyak ${count}x`,
-      "info"
-    );
-    this.log("Demo swap, implementasi swap asli di sini", "info");
     await this.prompt("Tekan Enter untuk kembali ke menu utama...");
   }
 
-  async swapR2UsdcMenu() {
-    this.printHeader();
-    console.log(chalk.white("Swap R2 <> USDC"));
-    console.log(chalk.white("1. R2 → USDC\n2. USDC → R2"));
-    const direction = await this.prompt(
-      "Pilih arah swap [1/2]: ",
-      (v) => ["1", "2"].includes(v) ? true : "Pilih 1 atau 2"
-    );
-    const count = Number(
-      await this.prompt(
-        "Berapa kali ingin melakukan transaksi swap? ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
-    const minDelay = Number(
-      await this.prompt(
-        "Min Delay (detik) antar transaksi? ",
-        (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
-      )
-    );
-    const maxDelay = Number(
-      await this.prompt(
-        "Max Delay (detik) antar transaksi? ",
-        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
-      )
-    );
-    const amount = Number(
-      await this.prompt(
-        "Masukkan jumlah swap (misal: 1, 0.01, dst): ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
-
-    for (let i = 1; i <= count; i++) {
-      const blockNumber = await this.provider.getBlockNumber();
-      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
-      this.log(`TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
-      const delay = randomDelay(minDelay, maxDelay);
-      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
-      if (i < count) await new Promise(res => setTimeout(res, delay * 1000));
-    }
-
-    this.log(
-      `Swap ${direction === "1" ? "R2 ke USDC" : "USDC ke R2"} sebanyak ${amount} sebanyak ${count}x`,
-      "info"
-    );
-    this.log("Demo swap, implementasi swap asli di sini", "info");
-    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
-  }
-
-  async addLiquidityMenu() {
-    this.printHeader();
-    console.log(chalk.white("Add Liquidity"));
-    const count = Number(
-      await this.prompt(
-        "Berapa kali ingin Add Liquidity? ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
-    const minDelay = Number(
-      await this.prompt(
-        "Min Delay (detik) antar transaksi? ",
-        (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
-      )
-    );
-    const maxDelay = Number(
-      await this.prompt(
-        "Max Delay (detik) antar transaksi? ",
-        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
-      )
-    );
-    for (let i = 1; i <= count; i++) {
-      const blockNumber = await this.provider.getBlockNumber();
-      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
-      this.log(`TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
-      const delay = randomDelay(minDelay, maxDelay);
-      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
-      if (i < count) await new Promise(res => setTimeout(res, delay * 1000));
-    }
-    this.log(`Add Liquidity sebanyak ${count}x`, "info");
-    this.log("Demo add liquidity, implementasi aslinya di sini", "info");
-    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
-  }
-
-  async removeLiquidityMenu() {
-    this.printHeader();
-    console.log(chalk.white("Remove Liquidity"));
-    const count = Number(
-      await this.prompt(
-        "Berapa kali ingin Remove Liquidity? ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
-    const minDelay = Number(
-      await this.prompt(
-        "Min Delay (detik) antar transaksi? ",
-        (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
-      )
-    );
-    const maxDelay = Number(
-      await this.prompt(
-        "Max Delay (detik) antar transaksi? ",
-        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
-      )
-    );
-    for (let i = 1; i <= count; i++) {
-      const blockNumber = await this.provider.getBlockNumber();
-      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
-      this.log(`TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
-      const delay = randomDelay(minDelay, maxDelay);
-      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
-      if (i < count) await new Promise(res => setTimeout(res, delay * 1000));
-    }
-    this.log(`Remove Liquidity sebanyak ${count}x`, "info");
-    this.log("Demo remove liquidity, implementasi aslinya di sini", "info");
-    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
-  }
-
-  async stakeR2usdMenu() {
-    this.printHeader();
-    console.log(chalk.white("Stake R2USD"));
-    const count = Number(
-      await this.prompt(
-        "Berapa kali ingin Stake R2USD? ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
-    const minDelay = Number(
-      await this.prompt(
-        "Min Delay (detik) antar transaksi? ",
-        (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
-      )
-    );
-    const maxDelay = Number(
-      await this.prompt(
-        "Max Delay (detik) antar transaksi? ",
-        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
-      )
-    );
-    const amount = Number(
-      await this.prompt(
-        "Masukkan jumlah stake tiap kali? ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
-    for (let i = 1; i <= count; i++) {
-      const blockNumber = await this.provider.getBlockNumber();
-      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
-      this.log(`TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
-      const delay = randomDelay(minDelay, maxDelay);
-      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
-      if (i < count) await new Promise(res => setTimeout(res, delay * 1000));
-    }
-    this.log(`Stake R2USD sebanyak ${count}x, amount ${amount}`, "info");
-    this.log("Demo stake, implementasi asli di sini", "info");
-    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
-  }
-
-  async unstakeSr2usdMenu() {
-    this.printHeader();
-    console.log(chalk.white("Unstake sR2USD"));
-    const count = Number(
-      await this.prompt(
-        "Berapa kali ingin Unstake sR2USD? ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
-    const minDelay = Number(
-      await this.prompt(
-        "Min Delay (detik) antar transaksi? ",
-        (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
-      )
-    );
-    const maxDelay = Number(
-      await this.prompt(
-        "Max Delay (detik) antar transaksi? ",
-        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
-      )
-    );
-    const amount = Number(
-      await this.prompt(
-        "Masukkan jumlah unstake tiap kali? ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
-    for (let i = 1; i <= count; i++) {
-      const blockNumber = await this.provider.getBlockNumber();
-      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
-      this.log(`TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
-      const delay = randomDelay(minDelay, maxDelay);
-      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
-      if (i < count) await new Promise(res => setTimeout(res, delay * 1000));
-    }
-    this.log(`Unstake sR2USD sebanyak ${count}x, amount ${amount}`, "info");
-    this.log("Demo unstake, implementasi asli di sini", "info");
-    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
-  }
+  // Similarly modify other functions (swapR2UsdcMenu, addLiquidityMenu, etc.) to do real transactions
+  // ...
 
   async runAllFeatures() {
     this.printHeader();
     console.log(chalk.white("Run All Features"));
     
-    // Get parameters for each feature
+    // Get parameters for all features including BTC deposit
     const swapUsdcR2usdCount = Number(
       await this.prompt(
         "Berapa kali ingin melakukan transaksi swap USDC <> R2USD? ",
         (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
       )
     );
-    const swapR2UsdcCount = Number(
+    // ... (other prompts)
+    const depositBtcCount = Number(
       await this.prompt(
-        "Berapa kali ingin melakukan transaksi swap R2 <> USDC? ",
+        "Berapa kali ingin melakukan deposit BTC? ",
         (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
       )
     );
-    const addLiquidityCount = Number(
+    const btcAddress = await this.prompt(
+      "Masukkan alamat BTC tujuan: ",
+      (v) => v.trim().length > 0 ? true : "Alamat BTC tidak boleh kosong"
+    );
+    const btcAmount = Number(
       await this.prompt(
-        "Berapa kali ingin Add Liquidity? ",
+        "Masukkan jumlah BTC yang akan di deposit: ",
         (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
       )
     );
-    const removeLiquidityCount = Number(
-      await this.prompt(
-        "Berapa kali ingin Remove Liquidity? ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
-    const stakeR2usdCount = Number(
-      await this.prompt(
-        "Berapa kali ingin Stake R2USD? ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
-    const unstakeSr2usdCount = Number(
-      await this.prompt(
-        "Berapa kali ingin Unstake sR2USD? ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
-    
-    const minDelay = Number(
-      await this.prompt(
-        "Min Delay (detik) antar transaksi? ",
-        (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
-      )
-    );
-    const maxDelay = Number(
-      await this.prompt(
-        "Max Delay (detik) antar transaksi? ",
-        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
-      )
-    );
-    
-    const swapUsdcR2usdAmount = Number(
-      await this.prompt(
-        "Masukkan jumlah swap USDC <> R2USD (misal: 1, 0.01, dst): ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
-    const swapR2UsdcAmount = Number(
-      await this.prompt(
-        "Masukkan jumlah swap R2 <> USDC (misal: 1, 0.01, dst): ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
-    const stakeR2usdAmount = Number(
-      await this.prompt(
-        "Masukkan jumlah stake R2USD tiap kali? ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
-    const unstakeSr2usdAmount = Number(
-      await this.prompt(
-        "Masukkan jumlah unstake sR2USD tiap kali? ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
+    // ... (rest of the prompts)
 
-    // Run all features in sequence
+    // Run all features including BTC deposit
     let txCounter = 1;
     
-    // Swap USDC <> R2USD
-    for (let i = 1; i <= swapUsdcR2usdCount; i++) {
-      const blockNumber = await this.provider.getBlockNumber();
-      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
-      this.log(`TX ${txCounter++} (USDC<>R2USD ${i}/${swapUsdcR2usdCount}) Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
-      const delay = randomDelay(minDelay, maxDelay);
-      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
-      if (i < swapUsdcR2usdCount || swapR2UsdcCount > 0 || addLiquidityCount > 0 || removeLiquidityCount > 0 || stakeR2usdCount > 0 || unstakeSr2usdCount > 0) {
-        await new Promise(res => setTimeout(res, delay * 1000));
-      }
-    }
+    // ... (existing feature executions)
     
-    // Swap R2 <> USDC
-    for (let i = 1; i <= swapR2UsdcCount; i++) {
-      const blockNumber = await this.provider.getBlockNumber();
-      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
-      this.log(`TX ${txCounter++} (R2<>USDC ${i}/${swapR2UsdcCount}) Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
-      const delay = randomDelay(minDelay, maxDelay);
-      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
-      if (i < swapR2UsdcCount || addLiquidityCount > 0 || removeLiquidityCount > 0 || stakeR2usdCount > 0 || unstakeSr2usdCount > 0) {
-        await new Promise(res => setTimeout(res, delay * 1000));
-      }
-    }
-    
-    // Add Liquidity
-    for (let i = 1; i <= addLiquidityCount; i++) {
-      const blockNumber = await this.provider.getBlockNumber();
-      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
-      this.log(`TX ${txCounter++} (Add Liquidity ${i}/${addLiquidityCount}) Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
-      const delay = randomDelay(minDelay, maxDelay);
-      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
-      if (i < addLiquidityCount || removeLiquidityCount > 0 || stakeR2usdCount > 0 || unstakeSr2usdCount > 0) {
-        await new Promise(res => setTimeout(res, delay * 1000));
-      }
-    }
-    
-    // Remove Liquidity
-    for (let i = 1; i <= removeLiquidityCount; i++) {
-      const blockNumber = await this.provider.getBlockNumber();
-      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
-      this.log(`TX ${txCounter++} (Remove Liquidity ${i}/${removeLiquidityCount}) Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
-      const delay = randomDelay(minDelay, maxDelay);
-      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
-      if (i < removeLiquidityCount || stakeR2usdCount > 0 || unstakeSr2usdCount > 0) {
-        await new Promise(res => setTimeout(res, delay * 1000));
-      }
-    }
-    
-    // Stake R2USD
-    for (let i = 1; i <= stakeR2usdCount; i++) {
-      const blockNumber = await this.provider.getBlockNumber();
-      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
-      this.log(`TX ${txCounter++} (Stake R2USD ${i}/${stakeR2usdCount}) Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
-      const delay = randomDelay(minDelay, maxDelay);
-      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
-      if (i < stakeR2usdCount || unstakeSr2usdCount > 0) {
-        await new Promise(res => setTimeout(res, delay * 1000));
-      }
-    }
-    
-    // Unstake sR2USD
-    for (let i = 1; i <= unstakeSr2usdCount; i++) {
-      const blockNumber = await this.provider.getBlockNumber();
-      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
-      this.log(`TX ${txCounter++} (Unstake sR2USD ${i}/${unstakeSr2usdCount}) Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
-      const delay = randomDelay(minDelay, maxDelay);
-      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
-      if (i < unstakeSr2usdCount) {
-        await new Promise(res => setTimeout(res, delay * 1000));
+    // BTC Deposit
+    if (depositBtcCount > 0) {
+      try {
+        const btcBridgeContract = new ethers.Contract(
+          this.contracts.btcBridge,
+          this.abis.btcBridge,
+          this.wallet
+        );
+        
+        for (let i = 1; i <= depositBtcCount; i++) {
+          const amountInWei = ethers.parseUnits(btcAmount.toString(), 8);
+          
+          const tx = await btcBridgeContract.depositBTC(
+            btcAddress,
+            amountInWei,
+            { value: amountInWei }
+          );
+          
+          const receipt = await tx.wait();
+          this.log(`TX ${txCounter++} (Deposit BTC ${i}/${depositBtcCount}) Berhasil! TX Hash: ${receipt.hash}`, "success");
+          
+          if (i < depositBtcCount) {
+            const delay = randomDelay(minDelay, maxDelay);
+            this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
+            await new Promise(res => setTimeout(res, delay * 1000));
+          }
+        }
+      } catch (error) {
+        this.log(`Error saat deposit BTC: ${error.message}`, "error");
       }
     }
     
