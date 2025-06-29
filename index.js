@@ -102,10 +102,28 @@ function createPromptBox() {
 }
 let promptBox;
 
+// ========== SWAP ACTIONS ==========
+
+function swapUsdcToR2usd() {
+  addLog("Memulai swap USDC ke R2USD (dummy action)...", "info");
+  // ... implementasi swap asli di sini
+}
+function swapR2usdToUsdc() {
+  addLog("Memulai swap R2USD ke USDC (dummy action)...", "info");
+  // ... implementasi swap asli di sini
+}
+function swapR2ToUsdc() {
+  addLog("Memulai swap R2 ke USDC (dummy action)...", "info");
+  // ... implementasi swap asli di sini
+}
+function swapUsdcToR2() {
+  addLog("Memulai swap USDC ke R2 (dummy action)...", "info");
+  // ... implementasi swap asli di sini
+}
+
 // ========== SUBMENUS ==========
 
-function showSimpleSubmenu(title, items) {
-  // Clean up any submenu before
+function showSimpleSubmenu(title, items, actions = {}) {
   const subMenu = blessed.list({
     parent: screen,
     top: 'center',
@@ -134,12 +152,17 @@ function showSimpleSubmenu(title, items) {
   });
 
   subMenu.on('select', (item, idx) => {
-    if (idx === items.length - 1 || /back/i.test(item.content)) {
+    const itemText = item.getText ? item.getText() : item.content;
+    if (idx === items.length - 1 || /back/i.test(itemText)) {
       screen.remove(subMenu);
       showMainMenu();
       return;
     }
-    addLog("Menu ini masih dummy.", "debug");
+    if (actions[idx]) {
+      actions[idx]();
+    } else {
+      addLog("Menu ini masih dummy.", "debug");
+    }
     screen.remove(subMenu);
     showMainMenu();
   });
@@ -151,20 +174,37 @@ function showOtomatisBotSubMenu() {
     "Back to Main Menu"
   ]);
 }
+
 function showManualSwapUSDC_R2USD_SubMenu() {
-  showSimpleSubmenu("Swap USDC <> R2USD", [
-    "Swap USDC ke R2USD (Soon)",
-    "Swap R2USD ke USDC (Soon)",
-    "Back to Main Menu"
-  ]);
+  showSimpleSubmenu(
+    "Swap USDC <> R2USD",
+    [
+      "Swap USDC ke R2USD",
+      "Swap R2USD ke USDC",
+      "Back to Main Menu"
+    ],
+    {
+      0: swapUsdcToR2usd,
+      1: swapR2usdToUsdc
+    }
+  );
 }
+
 function showManualSwapR2_USDC_SubMenu() {
-  showSimpleSubmenu("Swap R2 <> USDC", [
-    "Swap R2 ke USDC (Soon)",
-    "Swap USDC ke R2 (Soon)",
-    "Back to Main Menu"
-  ]);
+  showSimpleSubmenu(
+    "Swap R2 <> USDC",
+    [
+      "Swap R2 ke USDC",
+      "Swap USDC ke R2",
+      "Back to Main Menu"
+    ],
+    {
+      0: swapR2ToUsdc,
+      1: swapUsdcToR2
+    }
+  );
 }
+
 function showAddLiquiditySubMenu() {
   showSimpleSubmenu("Add Liquidity", [
     "Add R2-USDC Liquidity",
