@@ -162,7 +162,7 @@ class AllFeatureBot {
       r2: "0xb816bB88f836EA75Ca4071B46FF285f690C43bb7",                       
 
       router_usdc_r2usd: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",        
-      router_usdc_r2: "0x47d1b0623bb3e557bf8544c159c9ae51d091f8a2",           
+      router_r2_usdc: "0x47d1b0623bb3e557bf8544c159c9ae51d091f8a2",           
 
       lp_r2usd_sr2usd: "0xe85A06C238439F981c90b2C91393b2F3c46e27FC",         
       remove_liquidity: "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3",         
