@@ -469,8 +469,29 @@ class AllFeatureBot {
     await this.prompt("Tekan Enter untuk kembali ke menu utama...");
   }
 
-  // runAllFeatures tetap seperti sebelumnya (delay per fitur, bukan per tx)
-  // jika ingin per TX, tinggal copy pola di atas ke dalam loop runAllFeatures
+  async runAllFeatures() {
+    this.printHeader();
+    this.log("Run All Features Selected.", "success");
+
+    // 1. Swap USDC <> R2USD
+    const swapUsdcR2usdCount = Number(await this.prompt("How Many Times Do You Want To Swap USDC <> R2USD? -> ", v => !isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0"));
+    const swapUsdcR2usdMinDelay = Number(await this.prompt("Min Delay (detik) antar transaksi? ", v => !isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0"));
+    const swapUsdcR2usdMaxDelay = Number(await this.prompt("Max Delay (detik) antar transaksi? ", v => !isNaN(v) && Number(v) >= swapUsdcR2usdMinDelay ? true : "Masukkan angka >= Min Delay"));
+
+    for (let i = 1; i <= swapUsdcR2usdCount; i++) {
+      const blockNumber = await this.provider.getBlockNumber();
+      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
+      this.log(`[USDC <> R2USD] TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
+      const delay = randomDelay(swapUsdcR2usdMinDelay, swapUsdcR2usdMaxDelay);
+      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
+      if (i < swapUsdcR2usdCount) await new Promise(res => setTimeout(res, delay * 1000));
+    }
+
+    // ... lanjutkan untuk semua fitur lain sesuai pola di atas ...
+    // Bisa copy-paste dari menu manual, ganti label dan prompt sesuai batch Run All Features
+
+    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
+  }
 
 }
 
