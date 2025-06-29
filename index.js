@@ -106,115 +106,6 @@ let promptBox;
 
 // ========== SUBMENUS ==========
 
-function showOtomatisBotSubMenu() {
-  showSimpleSubmenu("Otomatis Bot", [
-    "Jalankan Bot Otomatis (Soon)",
-    "Back to Main Menu"
-  ]);
-}
-
-function showManualSwapUSDC_R2USD_SubMenu() {
-  showSimpleSubmenu("Swap USDC <> R2USD", [
-    "Swap USDC ke R2USD (Soon)",
-    "Swap R2USD ke USDC (Soon)",
-    "Back to Main Menu"
-  ]);
-}
-
-function showManualSwapR2_USDC_SubMenu() {
-  showSimpleSubmenu("Swap R2 <> USDC", [
-    "Swap R2 ke USDC (Soon)",
-    "Swap USDC ke R2 (Soon)",
-    "Back to Main Menu"
-  ]);
-}
-
-function showAddLiquiditySubMenu() {
-  showSimpleSubmenu("Add Liquidity", [
-    "Add R2-USDC Liquidity",
-    "Add R2-R2USD Liquidity",
-    "Add USDC-R2USD Liquidity",
-    "Add R2USD-sR2USD Liquidity",
-    "Back to Main Menu"
-  ]);
-}
-
-function showRemoveLiquiditySubMenu() {
-  showSimpleSubmenu("Remove Liquidity", [
-    "Remove R2-USDC Liquidity",
-    "Remove R2-R2USD Liquidity",
-    "Remove USDC-R2USD Liquidity",
-    "Remove R2USD-sR2USD Liquidity",
-    "Back to Main Menu"
-  ]);
-}
-
-function showStakeR2USDSubMenu() {
-  showSimpleSubmenu("Stake R2USD", [
-    "Stake R2USD (Soon)",
-    "Back to Main Menu"
-  ]);
-}
-
-function showUnstakeSR2USDSubMenu() {
-  showSimpleSubmenu("Unstake sR2USD", [
-    "Unstake sR2USD (Soon)",
-    "Back to Main Menu"
-  ]);
-}
-
-function showDepositBTCSubMenu() {
-  showSimpleSubmenu("Deposit BTC", [
-    "Deposit BTC (Soon)",
-    "Back to Main Menu"
-  ]);
-}
-
-// ========== TRANSACTION HISTORY & CLEAR LOGS ==========
-
-function showTransactionHistoryBox() {
-  const historyBox = blessed.box({
-    parent: screen,
-    top: 'center',
-    left: 'center',
-    width: '80%',
-    height: '80%',
-    border: { type: 'line' },
-    label: 'Transaction History',
-    style: { border: { fg: 'cyan' } },
-    scrollable: true,
-    alwaysScroll: true,
-    keys: true,
-    mouse: true,
-    vi: true,
-    scrollbar: { ch: ' ', style: { bg: 'cyan' } }
-  });
-
-  const content = operationsHistory.length
-    ? operationsHistory.map((op, i) => `[${i+1}] | ${op.type} | Amount: ${op.amount || '-'} | Block: ${op.blockNumber || '-'} | Tx: ${op.txHash || '-'}`).join('\n')
-    : "No transaction history.";
-
-  historyBox.setContent(content);
-
-  screen.append(historyBox);
-  historyBox.focus();
-  screen.render();
-
-  historyBox.key(['escape', 'q', 'C-c', 'enter'], () => {
-    screen.remove(historyBox);
-    showMainMenu();
-  });
-}
-
-function clearLogsAndReturn() {
-  logBox.setContent("");
-  screen.render();
-  addLog("Log telah dibersihkan.", "success");
-  // Langsung kembali ke main menu (tanpa box/menu apapun)
-  showMainMenu();
-}
-
-// ====== SUBMENU GENERIC ======
 function showSimpleSubmenu(title, items) {
   const subMenu = blessed.list({
     parent: screen,
@@ -233,19 +124,130 @@ function showSimpleSubmenu(title, items) {
     },
     keys: true, mouse: true, vi: true
   });
+
   screen.append(subMenu);
   subMenu.focus();
   screen.render();
+
+  // ESC/q/Ctrl+C bisa kembali ke menu utama
   subMenu.key(['escape', 'q', 'C-c'], () => {
-    screen.remove(subMenu); showMainMenu();
+    screen.remove(subMenu);
+    showMainMenu();
   });
+
+  // ENTER/SELECT pada list
   subMenu.on('select', (item, idx) => {
-    if (idx === items.length - 1) {
-      screen.remove(subMenu); showMainMenu(); return;
+    if (idx === items.length - 1 || /back/i.test(item.content)) {
+      screen.remove(subMenu);
+      showMainMenu();
+      return;
     }
     addLog("Menu ini masih dummy.", "debug");
-    screen.remove(subMenu); showMainMenu();
+    screen.remove(subMenu);
+    showMainMenu();
   });
+}
+
+// Submenu untuk semua menu yang perlu submenu
+function showOtomatisBotSubMenu() {
+  showSimpleSubmenu("Otomatis Bot", [
+    "Jalankan Bot Otomatis (Soon)",
+    "Back to Main Menu"
+  ]);
+}
+function showManualSwapUSDC_R2USD_SubMenu() {
+  showSimpleSubmenu("Swap USDC <> R2USD", [
+    "Swap USDC ke R2USD (Soon)",
+    "Swap R2USD ke USDC (Soon)",
+    "Back to Main Menu"
+  ]);
+}
+function showManualSwapR2_USDC_SubMenu() {
+  showSimpleSubmenu("Swap R2 <> USDC", [
+    "Swap R2 ke USDC (Soon)",
+    "Swap USDC ke R2 (Soon)",
+    "Back to Main Menu"
+  ]);
+}
+function showAddLiquiditySubMenu() {
+  showSimpleSubmenu("Add Liquidity", [
+    "Add R2-USDC Liquidity",
+    "Add R2-R2USD Liquidity",
+    "Add USDC-R2USD Liquidity",
+    "Add R2USD-sR2USD Liquidity",
+    "Back to Main Menu"
+  ]);
+}
+function showRemoveLiquiditySubMenu() {
+  showSimpleSubmenu("Remove Liquidity", [
+    "Remove R2-USDC Liquidity",
+    "Remove R2-R2USD Liquidity",
+    "Remove USDC-R2USD Liquidity",
+    "Remove R2USD-sR2USD Liquidity",
+    "Back to Main Menu"
+  ]);
+}
+function showStakeR2USDSubMenu() {
+  showSimpleSubmenu("Stake R2USD", [
+    "Stake R2USD (Soon)",
+    "Back to Main Menu"
+  ]);
+}
+function showUnstakeSR2USDSubMenu() {
+  showSimpleSubmenu("Unstake sR2USD", [
+    "Unstake sR2USD (Soon)",
+    "Back to Main Menu"
+  ]);
+}
+function showDepositBTCSubMenu() {
+  showSimpleSubmenu("Deposit BTC", [
+    "Deposit BTC (Soon)",
+    "Back to Main Menu"
+  ]);
+}
+
+// ========== TRANSACTION HISTORY & CLEAR LOGS ==========
+
+function showTransactionHistoryBox() {
+  const historyBox = blessed.box({
+    parent: screen,
+    top: 'center',
+    left: 'center',
+    width: '80%',
+    height: '80%',
+    border: { type: 'line' },
+    label: 'Transaction History (ESC/q/Enter: Back)',
+    style: { border: { fg: 'cyan' } },
+    scrollable: true,
+    alwaysScroll: true,
+    keys: true,
+    mouse: true,
+    vi: true,
+    scrollbar: { ch: ' ', style: { bg: 'cyan' } }
+  });
+
+  const content = operationsHistory.length
+    ? operationsHistory.map((op, i) => `[${i+1}] | ${op.type} | Amount: ${op.amount || '-'} | Block: ${op.blockNumber || '-'} | Tx: ${op.txHash || '-'}`).join('\n')
+    : "No transaction history.";
+
+  historyBox.setContent(content + "\n\n{cyan-fg}ESC/q/Enter: Kembali ke menu utama{/cyan-fg}");
+
+  screen.append(historyBox);
+  historyBox.focus();
+  screen.render();
+
+  historyBox.key(['escape', 'q', 'C-c', 'enter'], () => {
+    screen.remove(historyBox);
+    showMainMenu();
+  });
+}
+
+function clearLogsAndReturn() {
+  logBox.setContent("");
+  screen.render();
+  addLog("Log telah dibersihkan.", "success");
+  // Langsung kembali ke main menu (tanpa box/menu apapun)
+  showMainMenu();
 }
 
 // ========== MAIN MENU ==========
