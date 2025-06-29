@@ -42,7 +42,6 @@ let currentNonce = 0;
 let screen, walletBox, logBox, menuBox;
 
 // ========== HELPER ==========
-
 function addLog(message, type = "info") {
   const colors = { info: "white", error: "red", success: "green", debug: "yellow" };
   const timestamp = new Date().toLocaleString();
@@ -102,23 +101,114 @@ function createPromptBox() {
 }
 let promptBox;
 
-// ========== SWAP ACTIONS ==========
+// ========== GENERIC PROMPT ==========
+// Prompt dengan label dinamis dan callback, siap dipakai semua menu
+function promptInput(label, validator, callback) {
+  promptBox.input(label, '', (err, value) => {
+    if (!err && validator(value)) {
+      callback(value);
+    } else {
+      addLog("Input tidak valid.", "error");
+      showMainMenu();
+    }
+  });
+}
 
+// ========== SWAP & LIQUIDITY & STAKE ACTIONS ==========
+
+// Swap
 function swapUsdcToR2usd() {
-  addLog("Memulai swap USDC ke R2USD (dummy action)...", "info");
-  // ... implementasi swap asli di sini
+  promptInput('Masukkan jumlah USDC yang ingin di-swap ke R2USD:', v => !isNaN(Number(v)) && Number(v) > 0, (amount) => {
+    addLog(`Memulai swap USDC ke R2USD sejumlah ${amount} (dummy action)...`, "info");
+  });
 }
 function swapR2usdToUsdc() {
-  addLog("Memulai swap R2USD ke USDC (dummy action)...", "info");
-  // ... implementasi swap asli di sini
+  promptInput('Masukkan jumlah R2USD yang ingin di-swap ke USDC:', v => !isNaN(Number(v)) && Number(v) > 0, (amount) => {
+    addLog(`Memulai swap R2USD ke USDC sejumlah ${amount} (dummy action)...`, "info");
+  });
 }
 function swapR2ToUsdc() {
-  addLog("Memulai swap R2 ke USDC (dummy action)...", "info");
-  // ... implementasi swap asli di sini
+  promptInput('Masukkan jumlah R2 yang ingin di-swap ke USDC:', v => !isNaN(Number(v)) && Number(v) > 0, (amount) => {
+    addLog(`Memulai swap R2 ke USDC sejumlah ${amount} (dummy action)...`, "info");
+  });
 }
 function swapUsdcToR2() {
-  addLog("Memulai swap USDC ke R2 (dummy action)...", "info");
-  // ... implementasi swap asli di sini
+  promptInput('Masukkan jumlah USDC yang ingin di-swap ke R2:', v => !isNaN(Number(v)) && Number(v) > 0, (amount) => {
+    addLog(`Memulai swap USDC ke R2 sejumlah ${amount} (dummy action)...`, "info");
+  });
+}
+
+// Add Liquidity
+function addR2UsdcLiquidity() {
+  promptInput('Masukkan jumlah R2 untuk Add Liquidity R2-USDC:', v => !isNaN(Number(v)) && Number(v) > 0, (amountR2) => {
+    promptInput('Masukkan jumlah USDC untuk Add Liquidity R2-USDC:', v => !isNaN(Number(v)) && Number(v) > 0, (amountUsdc) => {
+      addLog(`Add Liquidity R2-USDC: R2 ${amountR2} + USDC ${amountUsdc} (dummy action)...`, "info");
+    });
+  });
+}
+function addR2R2usdLiquidity() {
+  promptInput('Masukkan jumlah R2 untuk Add Liquidity R2-R2USD:', v => !isNaN(Number(v)) && Number(v) > 0, (amountR2) => {
+    promptInput('Masukkan jumlah R2USD untuk Add Liquidity R2-R2USD:', v => !isNaN(Number(v)) && Number(v) > 0, (amountR2usd) => {
+      addLog(`Add Liquidity R2-R2USD: R2 ${amountR2} + R2USD ${amountR2usd} (dummy action)...`, "info");
+    });
+  });
+}
+function addUsdcR2usdLiquidity() {
+  promptInput('Masukkan jumlah USDC untuk Add Liquidity USDC-R2USD:', v => !isNaN(Number(v)) && Number(v) > 0, (amountUsdc) => {
+    promptInput('Masukkan jumlah R2USD untuk Add Liquidity USDC-R2USD:', v => !isNaN(Number(v)) && Number(v) > 0, (amountR2usd) => {
+      addLog(`Add Liquidity USDC-R2USD: USDC ${amountUsdc} + R2USD ${amountR2usd} (dummy action)...`, "info");
+    });
+  });
+}
+function addR2usdSR2usdLiquidity() {
+  promptInput('Masukkan jumlah R2USD untuk Add Liquidity R2USD-sR2USD:', v => !isNaN(Number(v)) && Number(v) > 0, (amountR2usd) => {
+    promptInput('Masukkan jumlah sR2USD untuk Add Liquidity R2USD-sR2USD:', v => !isNaN(Number(v)) && Number(v) > 0, (amountSR2usd) => {
+      addLog(`Add Liquidity R2USD-sR2USD: R2USD ${amountR2usd} + sR2USD ${amountSR2usd} (dummy action)...`, "info");
+    });
+  });
+}
+
+// Remove Liquidity (dummy prompt 1 kolom)
+function removeR2UsdcLiquidity() {
+  promptInput('Masukkan jumlah LP R2-USDC yang ingin di-remove:', v => !isNaN(Number(v)) && Number(v) > 0, (amount) => {
+    addLog(`Remove Liquidity R2-USDC: LP ${amount} (dummy action)...`, "info");
+  });
+}
+function removeR2R2usdLiquidity() {
+  promptInput('Masukkan jumlah LP R2-R2USD yang ingin di-remove:', v => !isNaN(Number(v)) && Number(v) > 0, (amount) => {
+    addLog(`Remove Liquidity R2-R2USD: LP ${amount} (dummy action)...`, "info");
+  });
+}
+function removeUsdcR2usdLiquidity() {
+  promptInput('Masukkan jumlah LP USDC-R2USD yang ingin di-remove:', v => !isNaN(Number(v)) && Number(v) > 0, (amount) => {
+    addLog(`Remove Liquidity USDC-R2USD: LP ${amount} (dummy action)...`, "info");
+  });
+}
+function removeR2usdSR2usdLiquidity() {
+  promptInput('Masukkan jumlah LP R2USD-sR2USD yang ingin di-remove:', v => !isNaN(Number(v)) && Number(v) > 0, (amount) => {
+    addLog(`Remove Liquidity R2USD-sR2USD: LP ${amount} (dummy action)...`, "info");
+  });
+}
+
+// Stake
+function stakeR2usd() {
+  promptInput('Masukkan jumlah R2USD yang ingin di-stake:', v => !isNaN(Number(v)) && Number(v) > 0, (amount) => {
+    addLog(`Stake R2USD: ${amount} (dummy action)...`, "info");
+  });
+}
+
+// Unstake
+function unstakeSR2usd() {
+  promptInput('Masukkan jumlah sR2USD yang ingin di-unstake:', v => !isNaN(Number(v)) && Number(v) > 0, (amount) => {
+    addLog(`Unstake sR2USD: ${amount} (dummy action)...`, "info");
+  });
+}
+
+// Deposit BTC
+function depositBtc() {
+  promptInput('Masukkan jumlah BTC yang ingin di-deposit:', v => !isNaN(Number(v)) && Number(v) > 0, (amount) => {
+    addLog(`Deposit BTC: ${amount} (dummy action)...`, "info");
+  });
 }
 
 // ========== SUBMENUS ==========
@@ -168,6 +258,7 @@ function showSimpleSubmenu(title, items, actions = {}) {
   });
 }
 
+// Submenu definitions
 function showOtomatisBotSubMenu() {
   showSimpleSubmenu("Otomatis Bot", [
     "Jalankan Bot Otomatis (Soon)",
@@ -206,40 +297,76 @@ function showManualSwapR2_USDC_SubMenu() {
 }
 
 function showAddLiquiditySubMenu() {
-  showSimpleSubmenu("Add Liquidity", [
-    "Add R2-USDC Liquidity",
-    "Add R2-R2USD Liquidity",
-    "Add USDC-R2USD Liquidity",
-    "Add R2USD-sR2USD Liquidity",
-    "Back to Main Menu"
-  ]);
+  showSimpleSubmenu(
+    "Add Liquidity",
+    [
+      "Add R2-USDC Liquidity",
+      "Add R2-R2USD Liquidity",
+      "Add USDC-R2USD Liquidity",
+      "Add R2USD-sR2USD Liquidity",
+      "Back to Main Menu"
+    ],
+    {
+      0: addR2UsdcLiquidity,
+      1: addR2R2usdLiquidity,
+      2: addUsdcR2usdLiquidity,
+      3: addR2usdSR2usdLiquidity
+    }
+  );
 }
 function showRemoveLiquiditySubMenu() {
-  showSimpleSubmenu("Remove Liquidity", [
-    "Remove R2-USDC Liquidity",
-    "Remove R2-R2USD Liquidity",
-    "Remove USDC-R2USD Liquidity",
-    "Remove R2USD-sR2USD Liquidity",
-    "Back to Main Menu"
-  ]);
+  showSimpleSubmenu(
+    "Remove Liquidity",
+    [
+      "Remove R2-USDC Liquidity",
+      "Remove R2-R2USD Liquidity",
+      "Remove USDC-R2USD Liquidity",
+      "Remove R2USD-sR2USD Liquidity",
+      "Back to Main Menu"
+    ],
+    {
+      0: removeR2UsdcLiquidity,
+      1: removeR2R2usdLiquidity,
+      2: removeUsdcR2usdLiquidity,
+      3: removeR2usdSR2usdLiquidity
+    }
+  );
 }
 function showStakeR2USDSubMenu() {
-  showSimpleSubmenu("Stake R2USD", [
-    "Stake R2USD (Soon)",
-    "Back to Main Menu"
-  ]);
+  showSimpleSubmenu(
+    "Stake R2USD",
+    [
+      "Stake R2USD",
+      "Back to Main Menu"
+    ],
+    {
+      0: stakeR2usd
+    }
+  );
 }
 function showUnstakeSR2USDSubMenu() {
-  showSimpleSubmenu("Unstake sR2USD", [
-    "Unstake sR2USD (Soon)",
-    "Back to Main Menu"
-  ]);
+  showSimpleSubmenu(
+    "Unstake sR2USD",
+    [
+      "Unstake sR2USD",
+      "Back to Main Menu"
+    ],
+    {
+      0: unstakeSR2usd
+    }
+  );
 }
 function showDepositBTCSubMenu() {
-  showSimpleSubmenu("Deposit BTC", [
-    "Deposit BTC (Soon)",
-    "Back to Main Menu"
-  ]);
+  showSimpleSubmenu(
+    "Deposit BTC",
+    [
+      "Deposit BTC",
+      "Back to Main Menu"
+    ],
+    {
+      0: depositBtc
+    }
+  );
 }
 
 // ========== TRANSACTION HISTORY & CLEAR LOGS ==========
