@@ -148,7 +148,7 @@ async function updateWalletData() {
 
 function updateWalletDisplay() {
   const shortAddress = walletInfo.address ? `${walletInfo.address.slice(0, 6)}...${walletInfo.address.slice(-4)}` : "N/A";
-  const content = `┌── Address   : {cyan-fg}${shortAddress}{/cyan-fg}
+  const content = `┌── Address   : {yellow-fg}${shortAddress}{/yellow-fg}
 │   ├── ETH           : {light-green-fg}${Number(walletInfo.balances.native).toFixed(4)}{/light-green-fg}
 │   ├── USDC          : {light-green-fg}${Number(walletInfo.balances.USDC).toFixed(2)}{/light-green-fg}
 │   ├── R2USD         : {light-green-fg}${Number(walletInfo.balances.R2USD).toFixed(4)}{/light-green-fg}
@@ -433,7 +433,14 @@ async function executeDepositBTC(amount, times, minDelay, maxDelay) {
 
 // UI Functions
 function showMainMenu() {
-  menuBox.setItems([
+  menuBox.style = {
+  fg: 'light-cyan',
+  selected: { bg: 'light-cyan', fg: 'black' },
+  item: { fg: 'light-cyan' },
+  focus: { bg: 'light-cyan' }
+};
+
+menuBox.setItems([
     "1. Otomatis Bot",
     "2. Swap USDC <> R2USD",
     "2. Swap R2 <> USDC",
@@ -502,7 +509,7 @@ function showForm(title, fields, onSubmit) {
       left: 2,
       width: '90%',
       height: 1,
-      inputOnFocus: true, keys: true, mouse: true
+      inputOnFocus: true, keys: true, mouse: true, style: { fg: 'magenta', border: { fg: 'cyan' }, focus: { fg: 'magenta', border: { fg: 'magenta' } } }
     });
   });
 
