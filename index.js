@@ -148,13 +148,13 @@ class AllFeatureBot {
       r2usd:"0x20c54C5F742F123Abb49a982BFe0af47edb38756",         
       r2: "0xBD6b25c4132F09369C354beE0f7be777D7d434fa",                       
 
-      router_usdc_r2usd: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",        
-      router_r2_usdc: "0x47d1b0623bb3e557bf8544c159c9ae51d091f8a2",           
+      router_usdc_r2usd: "0x20c54C5F742F123Abb49a982BFe0af47edb38756",        
+      router_r2_usdc: "0x07aBD582Df3D3472AA687A0489729f9F0424b1e3",           
 
-      lp_r2usd_sr2usd: "0xe85A06C238439F981c90b2C91393b2F3c46e27FC",         
+      lp_r2usd_sr2usd: "0x61F2AB7B0C0E10E18a3ed1C3bC7958540374A8DC",         
       remove_liquidity: "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3",         
 
-      staking_r2usd: "0x006CbF409CA275bA022111dB32BDAE054a97d488",            
+      staking_r2usd: "0xBD6b25c4132F09369C354beE0f7be777D7d434fa",            
       staking_btc: "0x23b2615d783E16F14B62EfA125306c7c69B4941A",              
     };
 
