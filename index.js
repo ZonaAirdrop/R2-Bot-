@@ -5,19 +5,6 @@ import { ethers } from "ethers";
 
 // ====== UNISWAP V2 ROUTER ABI (MINIMAL, + ADD/REMOVE/STAKE/SWAP) ======
 const routerAbi = [
-  "function getAmountsOut(uint256,address[]) view returns (uint256[])",
-  "function swapExactTokensForTokens(uint256,uint256,address[],address,uint256) returns (uint256[])",
-  "function approve(address,uint256) returns (bool)"
-];
-//
-  // WETH
-  {
-    "inputs": [],
-    "name": "WETH",
-    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
-    "stateMutability": "view",
-    "type": "function"
-  },
   // getAmountsOut
   {
     "inputs": [
