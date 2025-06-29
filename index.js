@@ -31,27 +31,28 @@ class AllFeatureBot {
       output: process.stdout,
     });
     this.state = {};
-    
+
     // Contract addresses (replace with your actual contract addresses)
     this.contracts = {
-  usdc: "0xc7BcCf452965Def7d5D9bF02943e3348F758D3CB",
-  btc: "0x0f3B4ae3f2b63B21b12e423444d065CC82e3DfA5",
-  r2usd: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",
-  sr2usd: "0x006CbF409CA275bA022111dB32BDAE054a97d488",
-  r2: "0xb816bB88f836EA75Ca4071B46FF285f690C43bb7",
-  swapRouter: "0x47d1B0623bB3E557bF8544C159c9ae51D091F8a2",
-  btcSwapRouter: "0x23b2615d783e16f14b62efa125306c7c69b4941a",
-  staking: "0x006cbf409ca275ba022111db32bdae054a97d488",
-  lpR2usdSr2usd: "0xee567fe1712faf6149d80da1e6934e354124cfe3",
-  lpUsdcR2usd: "0xee567fe1712faf6149d80da1e6934e354124cfe3",
-  lpR2R2usd: "0xee567fe1712faf6149d80da1e6934e354124cfe3",
-};
+      usdc: "0xc7BcCf452965Def7d5D9bF02943e3348F758D3CB",
+      btc: "0x0f3B4ae3f2b63B21b12e423444d065CC82e3DfA5",
+      r2usd: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",
+      sr2usd: "0x006CbF409CA275bA022111dB32BDAE054a97d488",
+      r2: "0xb816bB88f836EA75Ca4071B46FF285f690C43bb7",
+      swapRouter: "0x47d1B0623bB3E557bF8544C159c9ae51D091F8a2",
+      btcSwapRouter: "0x23b2615d783e16f14b62efa125306c7c69b4941a",
+      staking: "0x006cbf409ca275ba022111db32bdae054a97d488",
+      lpR2usdSr2usd: "0xee567fe1712faf6149d80da1e6934e354124cfe3",
+      lpUsdcR2usd: "0xee567fe1712faf6149d80da1e6934e354124cfe3",
+      lpR2R2usd: "0xee567fe1712faf6149d80da1e6934e354124cfe3",
+    };
     // Contract ABIs (simplified examples)
     this.abis = {
       erc20: [
         "function approve(address spender, uint256 amount) returns (bool)",
         "function transfer(address recipient, uint256 amount) returns (bool)",
-        "function balanceOf(address account) view returns (uint256)"
+        "function balanceOf(address account) view returns (uint256)",
+        "function decimals() view returns (uint8)"
       ],
       staking: [
         "function stake(uint256 amount)",
@@ -153,33 +154,31 @@ class AllFeatureBot {
   async depositBtcMenu() {
     this.printHeader();
     console.log(chalk.white("Deposit BTC"));
-    
+
     const btcAddress = await this.prompt(
       "Masukkan alamat BTC tujuan: ",
       (v) => v.trim().length > 0 ? true : "Alamat BTC tidak boleh kosong"
     );
-    
-    const amount = Number(
-      await this.prompt(
-        "Masukkan jumlah BTC yang akan di deposit: ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
+
+    const amount = await this.prompt(
+      "Masukkan jumlah BTC yang akan di deposit: ",
+      (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
     );
-    
+
     const count = Number(
       await this.prompt(
         "Berapa kali ingin melakukan deposit? ",
         (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
       )
     );
-    
+
     const minDelay = Number(
       await this.prompt(
         "Min Delay (detik) antar transaksi? ",
         (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
       )
     );
-    
+
     const maxDelay = Number(
       await this.prompt(
         "Max Delay (detik) antar transaksi? ",
@@ -193,22 +192,22 @@ class AllFeatureBot {
         this.abis.btcBridge,
         this.wallet
       );
-      
+
       for (let i = 1; i <= count; i++) {
         this.log(`Mempersiapkan deposit BTC ke ${btcAddress} sebesar ${amount} BTC (${i}/${count})`, "info");
-        
-        // Convert BTC amount to satoshis/wei equivalent (adjust based on your contract)
-        const amountInWei = ethers.parseUnits(amount.toString(), 8);
-        
+
+        // amount dari user (string) jadi parseUnits pakai 8 decimals
+        const amountInWei = ethers.parseUnits(amount, 8);
+
         const tx = await btcBridgeContract.depositBTC(
           btcAddress,
           amountInWei,
           { value: amountInWei } // Adjust if your contract requires different value
         );
-        
+
         const receipt = await tx.wait();
         this.log(`Deposit BTC berhasil! TX Hash: ${receipt.hash}`, "success");
-        
+
         if (i < count) {
           const delay = randomDelay(minDelay, maxDelay);
           this.log(`Menunggu ${delay} detik sebelum transaksi berikutnya...`, "info");
@@ -218,7 +217,7 @@ class AllFeatureBot {
     } catch (error) {
       this.log(`Error saat deposit BTC: ${error.message}`, "error");
     }
-    
+
     await this.prompt("Tekan Enter untuk kembali ke menu utama...");
   }
 
@@ -248,11 +247,9 @@ class AllFeatureBot {
         (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
       )
     );
-    const amount = Number(
-      await this.prompt(
-        "Masukkan jumlah swap (misal: 1, 0.01, dst): ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
+    const amount = await this.prompt(
+      "Masukkan jumlah swap (misal: 1, 0.01, dst): ",
+      (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
     );
 
     try {
@@ -260,18 +257,24 @@ class AllFeatureBot {
       const r2usdContract = new ethers.Contract(this.contracts.r2usd, this.abis.erc20, this.wallet);
       const swapRouterContract = new ethers.Contract(this.contracts.swapRouter, this.abis.swap, this.wallet);
 
-      const amountInWei = ethers.parseUnits(amount.toString(), 18); // Adjust decimals as needed
+      // Ambil decimals langsung dari contract untuk dipastikan benar
+      const usdcDecimals = await usdcContract.decimals();
+      const r2usdDecimals = await r2usdContract.decimals();
+
+      // Pilih decimals sesuai arah swap
+      const amountInWei =
+        direction === "1"
+          ? ethers.parseUnits(amount, usdcDecimals)
+          : ethers.parseUnits(amount, r2usdDecimals);
 
       for (let i = 1; i <= count; i++) {
         if (direction === "1") {
           // USDC → R2USD
-          // 1. Approve USDC spending
           const approveTx = await usdcContract.approve(this.contracts.swapRouter, amountInWei);
           await approveTx.wait();
-          
-          // 2. Execute swap
+
           const path = [this.contracts.usdc, this.contracts.r2usd];
-          const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
+          const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
           const swapTx = await swapRouterContract.swapExactTokensForTokens(
             amountInWei,
             0, // amountOutMin - set proper slippage tolerance
@@ -283,10 +286,9 @@ class AllFeatureBot {
           this.log(`Swap USDC → R2USD berhasil! TX Hash: ${receipt.hash}`, "success");
         } else {
           // R2USD → USDC
-          // Similar logic but reverse the path
           const approveTx = await r2usdContract.approve(this.contracts.swapRouter, amountInWei);
           await approveTx.wait();
-          
+
           const path = [this.contracts.r2usd, this.contracts.usdc];
           const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
           const swapTx = await swapRouterContract.swapExactTokensForTokens(
@@ -319,7 +321,7 @@ class AllFeatureBot {
   async runAllFeatures() {
     this.printHeader();
     console.log(chalk.white("Run All Features"));
-    
+
     // Get parameters for all features including BTC deposit
     const swapUsdcR2usdCount = Number(
       await this.prompt(
@@ -338,19 +340,17 @@ class AllFeatureBot {
       "Masukkan alamat BTC tujuan: ",
       (v) => v.trim().length > 0 ? true : "Alamat BTC tidak boleh kosong"
     );
-    const btcAmount = Number(
-      await this.prompt(
-        "Masukkan jumlah BTC yang akan di deposit: ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
+    const btcAmount = await this.prompt(
+      "Masukkan jumlah BTC yang akan di deposit: ",
+      (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
     );
     // ... (rest of the prompts)
 
     // Run all features including BTC deposit
     let txCounter = 1;
-    
+
     // ... (existing feature executions)
-    
+
     // BTC Deposit
     if (depositBtcCount > 0) {
       try {
@@ -359,19 +359,19 @@ class AllFeatureBot {
           this.abis.btcBridge,
           this.wallet
         );
-        
+
         for (let i = 1; i <= depositBtcCount; i++) {
-          const amountInWei = ethers.parseUnits(btcAmount.toString(), 8);
-          
+          const amountInWei = ethers.parseUnits(btcAmount, 8);
+
           const tx = await btcBridgeContract.depositBTC(
             btcAddress,
             amountInWei,
             { value: amountInWei }
           );
-          
+
           const receipt = await tx.wait();
           this.log(`TX ${txCounter++} (Deposit BTC ${i}/${depositBtcCount}) Berhasil! TX Hash: ${receipt.hash}`, "success");
-          
+
           if (i < depositBtcCount) {
             const delay = randomDelay(minDelay, maxDelay);
             this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
@@ -382,7 +382,7 @@ class AllFeatureBot {
         this.log(`Error saat deposit BTC: ${error.message}`, "error");
       }
     }
-    
+
     this.log("Semua fitur telah dijalankan!", "success");
     await this.prompt("Tekan Enter untuk kembali ke menu utama...");
   }
