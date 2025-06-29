@@ -1,556 +1,127 @@
 import "dotenv/config";
-import blessed from "blessed";
+import readline from "readline";
+import chalk from "chalk";
 import { ethers } from "ethers";
 
-// ====== CONFIG & STATE ======
-const RPC_URL = process.env.RPC_URL || "https://sepolia.infura.io/v3/ef659d824bd14ae798d965f855f2cfd6";
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
-
-if (!PRIVATE_KEY) {
-  console.error("🛑 CRITICAL: Missing PRIVATE_KEY in .env");
-  process.exit(1);
-}
-
-const provider = new ethers.JsonRpcProvider(RPC_URL);
-const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
-
-const CONFIG = {
-  RPC_URL: RPC_URL,
-  NETWORK_NAME: "Sepolia Testnet"
-};
-
-let walletInfo = {
-  balances: {
-    native: "1.2345",
-    USDC: "1000",
-    BTC: "0.005",
-    R2USD: "500",
-    sR2USD: "200",
-    R2: "300",
-    LP_R2USD_sR2USD: "0",
-    LP_USDC_R2USD: "0",
-    LP_R2_R2USD: "0"
-  },
-  status: "Ready"
-};
-
-let operationsHistory = [
-  { type: "Add Liquidity", amount: "100", blockNumber: "123456", txHash: "0xabc123" },
-  { type: "Swap", amount: "10", blockNumber: "123457", txHash: "0xdef456" },
-];
-
-let screen, walletBox, logBox, menuBox;
-let promptBox;
-
-// ========== HELPER ==========
-function addLog(message, type = "info") {
-  const colors = { info: "white", error: "red", success: "green", debug: "yellow" };
-  const timestamp = new Date().toLocaleString();
-  logBox.add(`[${timestamp}] | {${colors[type]}-fg}${message}{/${colors[type]}-fg}`);
-  screen.render();
-}
-
-function updateWalletDisplay() {
-  const addr = wallet.address;
-  const shortAddress = addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "N/A";
-  const content = `┌── Address   : {bright-yellow-fg}${shortAddress}{/bright-yellow-fg}
-│   ├── ETH           : {bright-green-fg}${walletInfo.balances.native}{/bright-green-fg}
-│   ├── USDC          : {bright-green-fg}${walletInfo.balances.USDC}{/bright-green-fg}
-│   ├── R2USD         : {bright-green-fg}${walletInfo.balances.R2USD}{/bright-green-fg}
-│   ├── sR2USD        : {bright-green-fg}${walletInfo.balances.sR2USD}{/bright-green-fg}
-│   ├── R2            : {bright-green-fg}${walletInfo.balances.R2}{/bright-green-fg}
-│   ├── LP R2USD-sR2USD : {bright-green-fg}${walletInfo.balances.LP_R2USD_sR2USD}{/bright-green-fg}
-│   ├── LP USDC-R2USD : {bright-green-fg}${walletInfo.balances.LP_USDC_R2USD}{/bright-green-fg}
-│   ├── LP R2-R2USD   : {bright-green-fg}${walletInfo.balances.LP_R2_R2USD}{/bright-green-fg}
-│   └── BTC           : {bright-green-fg}${walletInfo.balances.BTC}{/bright-green-fg}
-└── Network        : {bright-cyan-fg}${CONFIG.NETWORK_NAME}{/bright-cyan-fg}`;
-  walletBox.setContent(content);
-  screen.render();
-}
-
-async function updateWalletData() {
-  // Simulasi fetch saldo; di sini dummy saja
-  updateWalletDisplay();
-}
-
-// ========== PROMPT BOX ==========
-function createPromptBox() {
-  const prompt = blessed.prompt({
-    parent: screen,
-    left: 'center',
-    top: 'center',
-    width: '50%',
-    height: 7,
-    border: { type: 'line' },
-    label: ' {blue-fg}Input{/blue-fg} ',
-    tags: true,
-    keys: true,
-    vi: true
-  });
-  prompt.hide();
-  screen.append(prompt); // PALING AKHIR
-  return prompt;
-}
-
-// ========== GENERIC PROMPT WITH CALLBACK ==========
-function promptStep(labels, callback) {
-  let answers = [];
-  function ask(i) {
-    if (i >= labels.length) {
-      promptBox.hide();
-      screen.render();
-      callback(answers);
-      return;
-    }
-    // Tampilkan saldo token yang relevan jika ada di prompt label
-    let saldoInfo = "";
-    if (/USDC/i.test(labels[i])) saldoInfo = ` (Saldo: ${walletInfo.balances.USDC})`;
-    if (/R2USD/i.test(labels[i]) && !/sR2USD/i.test(labels[i])) saldoInfo = ` (Saldo: ${walletInfo.balances.R2USD})`;
-    if (/sR2USD/i.test(labels[i])) saldoInfo = ` (Saldo: ${walletInfo.balances.sR2USD})`;
-    if (/R2\b/i.test(labels[i]) && !/R2USD/i.test(labels[i]) && !/sR2USD/i.test(labels[i])) saldoInfo = ` (Saldo: ${walletInfo.balances.R2})`;
-    if (/BTC/i.test(labels[i])) saldoInfo = ` (Saldo: ${walletInfo.balances.BTC})`;
-    if (/LP R2-USDC/i.test(labels[i])) saldoInfo = ` (Saldo: ${walletInfo.balances.LP_R2_USDC})`;
-    if (/LP R2-R2USD/i.test(labels[i])) saldoInfo = ` (Saldo: ${walletInfo.balances.LP_R2_R2USD})`;
-    if (/LP USDC-R2USD/i.test(labels[i])) saldoInfo = ` (Saldo: ${walletInfo.balances.LP_USDC_R2USD})`;
-    if (/LP R2USD-sR2USD/i.test(labels[i])) saldoInfo = ` (Saldo: ${walletInfo.balances.LP_R2USD_sR2USD})`;
-    let label = labels[i] + saldoInfo;
-    promptBox.show();
-    promptBox.focus();
-    screen.render();
-    promptBox.input(label, '', (err, value) => {
-      promptBox.hide();
-      screen.render();
-      if (err || !value || isNaN(Number(value)) || Number(value) <= 0) {
-        addLog("Input tidak valid.", "error");
-        showMainMenu();
-        return;
-      }
-      answers.push(Number(value));
-      ask(i + 1);
+class MinimalR2Bot {
+  constructor() {
+    this.RPC_URL = process.env.RPC_URL || "https://sepolia.infura.io/v3/ef659d824bd14ae798d965f855f2cfd6";
+    this.PRIVATE_KEY = process.env.PRIVATE_KEY;
+    this.provider = new ethers.JsonRpcProvider(this.RPC_URL);
+    this.wallet = this.PRIVATE_KEY ? new ethers.Wallet(this.PRIVATE_KEY, this.provider) : null;
+    this.history = [];
+    this.rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
     });
   }
-  ask(0);
-}
 
-// ========== ACTIONS ==========
-function swapUsdcToR2usd(done) {
-  promptStep(
-    ['Masukkan jumlah USDC yang ingin di-swap ke R2USD:','Berapa kali swap?'],
-    ([amount, times]) => {
-      addLog(`Swap USDC ke R2USD sejumlah ${amount} sebanyak ${times} kali (dummy action)...`, "info");
-      done();
-    }
-  );
-}
-function swapR2usdToUsdc(done) {
-  promptStep(
-    ['Masukkan jumlah R2USD yang ingin di-swap ke USDC:','Berapa kali swap?'],
-    ([amount, times]) => {
-      addLog(`Swap R2USD ke USDC sejumlah ${amount} sebanyak ${times} kali (dummy action)...`, "info");
-      done();
-    }
-  );
-}
-function swapR2ToUsdc(done) {
-  promptStep(
-    ['Masukkan jumlah R2 yang ingin di-swap ke USDC:','Berapa kali swap?'],
-    ([amount, times]) => {
-      addLog(`Swap R2 ke USDC sejumlah ${amount} sebanyak ${times} kali (dummy action)...`, "info");
-      done();
-    }
-  );
-}
-function swapUsdcToR2(done) {
-  promptStep(
-    ['Masukkan jumlah USDC yang ingin di-swap ke R2:','Berapa kali swap?'],
-    ([amount, times]) => {
-      addLog(`Swap USDC ke R2 sejumlah ${amount} sebanyak ${times} kali (dummy action)...`, "info");
-      done();
-    }
-  );
-}
-function addR2UsdcLiquidity(done) {
-  promptStep(
-    ['Masukkan jumlah R2:','Masukkan jumlah USDC:'],
-    ([amountR2, amountUsdc]) => {
-      addLog(`Add Liquidity R2-USDC: R2 ${amountR2} + USDC ${amountUsdc} (dummy action)...`, "info");
-      done();
-    }
-  );
-}
-function addR2R2usdLiquidity(done) {
-  promptStep(
-    ['Masukkan jumlah R2:','Masukkan jumlah R2USD:'],
-    ([amountR2, amountR2usd]) => {
-      addLog(`Add Liquidity R2-R2USD: R2 ${amountR2} + R2USD ${amountR2usd} (dummy action)...`, "info");
-      done();
-    }
-  );
-}
-function addUsdcR2usdLiquidity(done) {
-  promptStep(
-    ['Masukkan jumlah USDC:','Masukkan jumlah R2USD:'],
-    ([amountUsdc, amountR2usd]) => {
-      addLog(`Add Liquidity USDC-R2USD: USDC ${amountUsdc} + R2USD ${amountR2usd} (dummy action)...`, "info");
-      done();
-    }
-  );
-}
-function addR2usdSR2usdLiquidity(done) {
-  promptStep(
-    ['Masukkan jumlah R2USD:','Masukkan jumlah sR2USD:'],
-    ([amountR2usd, amountSR2usd]) => {
-      addLog(`Add Liquidity R2USD-sR2USD: R2USD ${amountR2usd} + sR2USD ${amountSR2usd} (dummy action)...`, "info");
-      done();
-    }
-  );
-}
-function removeR2UsdcLiquidity(done) {
-  promptStep(['Masukkan jumlah LP R2-USDC yang ingin di-remove:'], ([amount]) => {
-    addLog(`Remove Liquidity R2-USDC: LP ${amount} (dummy action)...`, "info");
-    done();
-  });
-}
-function removeR2R2usdLiquidity(done) {
-  promptStep(['Masukkan jumlah LP R2-R2USD yang ingin di-remove:'], ([amount]) => {
-    addLog(`Remove Liquidity R2-R2USD: LP ${amount} (dummy action)...`, "info");
-    done();
-  });
-}
-function removeUsdcR2usdLiquidity(done) {
-  promptStep(['Masukkan jumlah LP USDC-R2USD yang ingin di-remove:'], ([amount]) => {
-    addLog(`Remove Liquidity USDC-R2USD: LP ${amount} (dummy action)...`, "info");
-    done();
-  });
-}
-function removeR2usdSR2usdLiquidity(done) {
-  promptStep(['Masukkan jumlah LP R2USD-sR2USD yang ingin di-remove:'], ([amount]) => {
-    addLog(`Remove Liquidity R2USD-sR2USD: LP ${amount} (dummy action)...`, "info");
-    done();
-  });
-}
-function stakeR2usd(done) {
-  promptStep(['Masukkan jumlah R2USD yang ingin di-stake:'], ([amount]) => {
-    addLog(`Stake R2USD: ${amount} (dummy action)...`, "info");
-    done();
-  });
-}
-function unstakeSR2usd(done) {
-  promptStep(['Masukkan jumlah sR2USD yang ingin di-unstake:'], ([amount]) => {
-    addLog(`Unstake sR2USD: ${amount} (dummy action)...`, "info");
-    done();
-  });
-}
-function depositBtc(done) {
-  promptStep(['Masukkan jumlah BTC yang ingin di-deposit:'], ([amount]) => {
-    addLog(`Deposit BTC: ${amount} (dummy action)...`, "info");
-    done();
-  });
-}
+  printHeader() {
+    console.clear();
+    console.log(chalk.bold.cyan("═══════════════════════════════════════════════════"));
+    console.log(chalk.bold.cyan("               R2 CLI BOT INTERFACE"));
+    console.log(chalk.cyan("───────────────────────────────────────────────────"));
+    if (this.wallet)
+      console.log(chalk.gray(`Address: ${this.wallet.address.slice(0, 6)}...${this.wallet.address.slice(-4)}`));
+    console.log(chalk.bold.cyan("═══════════════════════════════════════════════════\n"));
+  }
 
-// ========== SUBMENUS ==========
-function showSimpleSubmenu(title, items, actions = {}) {
-  const subMenu = blessed.list({
-    parent: screen,
-    top: 'center',
-    left: 'center',
-    width: '60%',
-    height: Math.max(6, items.length * 2),
-    border: { type: 'line' },
-    label: title,
-    items,
-    style: {
-      selected: { bg: 'cyan', fg: 'black' },
-      border: { fg: 'cyan' },
-      item: { fg: 'cyan' },
-      focus: { bg: 'cyan' }
-    },
-    keys: true, mouse: true, vi: true
-  });
+  log(msg, type = "info") {
+    let color = chalk.white;
+    if (type === "error") color = chalk.red;
+    if (type === "success") color = chalk.green;
+    if (type === "info") color = chalk.blue;
+    console.log(color(`[${new Date().toLocaleTimeString()}] ${msg}`));
+  }
 
-  screen.append(subMenu);
-  subMenu.focus();
-  screen.render();
+  async prompt(question) {
+    return new Promise((resolve) => {
+      this.rl.question(chalk.yellow(question), (answer) => resolve(answer.trim()));
+    });
+  }
 
-  subMenu.key(['escape', 'q', 'C-c'], () => {
-    screen.remove(subMenu);
-    showMainMenu();
-  });
-
-  subMenu.on('select', (item, idx) => {
-    const itemText = item.getText ? item.getText() : item.content;
-    if (idx === items.length - 1 || /back/i.test(itemText)) {
-      screen.remove(subMenu);
-      showMainMenu();
-      return;
+  async mainMenu() {
+    while (true) {
+      this.printHeader();
+      console.log(chalk.white(
+        "1. Swap USDC <-> R2USD\n" +
+        "2. Add Liquidity (USDC-R2USD)\n" +
+        "3. Show History\n" +
+        "4. Exit\n"
+      ));
+      const choice = await this.prompt("> Pilih menu [1-4]: ");
+      if (choice === "1") await this.swapMenu();
+      else if (choice === "2") await this.addLiquidityMenu();
+      else if (choice === "3") this.showHistory();
+      else if (choice === "4") {
+        this.log("Goodbye!", "success");
+        this.rl.close();
+        process.exit(0);
+      }
+      else {
+        this.log("Pilihan tidak valid! Tekan Enter untuk ulang...", "error");
+        await this.prompt("");
+      }
     }
-    screen.remove(subMenu);
-    if (actions[idx]) {
-      actions[idx](() => {
-        showMainMenu();
-      });
+  }
+
+  async swapMenu() {
+    this.printHeader();
+    const dir = await this.prompt("Swap [1] USDC->R2USD  [2] R2USD->USDC ? [1/2]: ");
+    if (dir === "1") {
+      const amount = await this.prompt("Jumlah USDC yang ingin di-swap ke R2USD: ");
+      this.log(`✅ ${amount} USDC -> R2USD (dummy swap)`, "success");
+      this.history.push({ action: "Swap USDC->R2USD", amount, time: new Date() });
+    } else if (dir === "2") {
+      const amount = await this.prompt("Jumlah R2USD yang ingin di-swap ke USDC: ");
+      this.log(`✅ ${amount} R2USD -> USDC (dummy swap)`, "success");
+      this.history.push({ action: "Swap R2USD->USDC", amount, time: new Date() });
     } else {
-      addLog("Menu ini masih dummy.", "debug");
-      showMainMenu();
+      this.log("Pilihan tidak valid pada menu swap!", "error");
+      await this.prompt("Tekan Enter untuk kembali...");
     }
-  });
-}
+  }
 
-// ========== SUBMENU DEFINITIONS ==========
-function showOtomatisBotSubMenu() {
-  showSimpleSubmenu("Otomatis Bot", [
-    "Jalankan Bot Otomatis (Soon)",
-    "Back to Main Menu"
-  ]);
-}
-function showManualSwapUSDC_R2USD_SubMenu() {
-  showSimpleSubmenu(
-    "Swap USDC <> R2USD",
-    [
-      "Swap USDC ke R2USD",
-      "Swap R2USD ke USDC",
-      "Back to Main Menu"
-    ],
-    {
-      0: swapUsdcToR2usd,
-      1: swapR2usdToUsdc
+  async addLiquidityMenu() {
+    this.printHeader();
+    const usdc = await this.prompt("Jumlah USDC: ");
+    const r2usd = await this.prompt("Jumlah R2USD: ");
+    this.log(`✅ Add Liquidity: USDC ${usdc} + R2USD ${r2usd} (dummy)`, "success");
+    this.history.push({ action: "Add Liquidity", usdc, r2usd, time: new Date() });
+    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
+  }
+
+  showHistory() {
+    this.printHeader();
+    if (!this.history.length) {
+      this.log("Belum ada riwayat transaksi.", "info");
+    } else {
+      this.log("Riwayat Transaksi:", "info");
+      this.history.forEach((x, i) => {
+        if (x.action === "Add Liquidity") {
+          console.log(
+            chalk.green(`[${i + 1}] ${x.action}: USDC=${x.usdc}, R2USD=${x.r2usd} | ${x.time.toLocaleString()}`)
+          );
+        } else {
+          console.log(
+            chalk.green(`[${i + 1}] ${x.action}: ${x.amount} | ${x.time.toLocaleString()}`)
+          );
+        }
+      });
     }
-  );
-}
-function showManualSwapR2_USDC_SubMenu() {
-  showSimpleSubmenu(
-    "Swap R2 <> USDC",
-    [
-      "Swap R2 ke USDC",
-      "Swap USDC ke R2",
-      "Back to Main Menu"
-    ],
-    {
-      0: swapR2ToUsdc,
-      1: swapUsdcToR2
-    }
-  );
-}
-function showAddLiquiditySubMenu() {
-  showSimpleSubmenu(
-    "Add Liquidity",
-    [
-      "Add R2-USDC Liquidity",
-      "Add R2-R2USD Liquidity",
-      "Add USDC-R2USD Liquidity",
-      "Add R2USD-sR2USD Liquidity",
-      "Back to Main Menu"
-    ],
-    {
-      0: addR2UsdcLiquidity,
-      1: addR2R2usdLiquidity,
-      2: addUsdcR2usdLiquidity,
-      3: addR2usdSR2usdLiquidity
-    }
-  );
-}
-function showRemoveLiquiditySubMenu() {
-  showSimpleSubmenu(
-    "Remove Liquidity",
-    [
-      "Remove R2-USDC Liquidity",
-      "Remove R2-R2USD Liquidity",
-      "Remove USDC-R2USD Liquidity",
-      "Remove R2USD-sR2USD Liquidity",
-      "Back to Main Menu"
-    ],
-    {
-      0: removeR2UsdcLiquidity,
-      1: removeR2R2usdLiquidity,
-      2: removeUsdcR2usdLiquidity,
-      3: removeR2usdSR2usdLiquidity
-    }
-  );
-}
-function showStakeR2USDSubMenu() {
-  showSimpleSubmenu(
-    "Stake R2USD",
-    [
-      "Stake R2USD",
-      "Back to Main Menu"
-    ],
-    {
-      0: stakeR2usd
-    }
-  );
-}
-function showUnstakeSR2USDSubMenu() {
-  showSimpleSubmenu(
-    "Unstake sR2USD",
-    [
-      "Unstake sR2USD",
-      "Back to Main Menu"
-    ],
-    {
-      0: unstakeSR2usd
-    }
-  );
-}
-function showDepositBTCSubMenu() {
-  showSimpleSubmenu(
-    "Deposit BTC",
-    [
-      "Deposit BTC",
-      "Back to Main Menu"
-    ],
-    {
-      0: depositBtc
-    }
-  );
+    // Pause before returning
+    console.log();
+    return this.prompt("Tekan Enter untuk kembali ke menu utama...");
+  }
 }
 
-// ========== TRANSACTION HISTORY & CLEAR LOGS ==========
-function showTransactionHistoryBox() {
-  const historyBox = blessed.box({
-    parent: screen,
-    top: 'center',
-    left: 'center',
-    width: '80%',
-    height: '80%',
-    border: { type: 'line' },
-    label: 'Transaction History (ESC/q/Enter: Back)',
-    style: { border: { fg: 'cyan' } },
-    scrollable: true,
-    alwaysScroll: true,
-    keys: true,
-    mouse: true,
-    vi: true,
-    scrollbar: { ch: ' ', style: { bg: 'cyan' } }
-  });
-
-  const content = operationsHistory.length
-    ? operationsHistory.map((op, i) => `[${i+1}] | ${op.type} | Amount: ${op.amount || '-'} | Block: ${op.blockNumber || '-'} | Tx: ${op.txHash || '-'}`).join('\n')
-    : "No transaction history.";
-
-  historyBox.setContent(content + "\n\n{cyan-fg}ESC/q/Enter: Kembali ke menu utama{/cyan-fg}");
-
-  screen.append(historyBox);
-  historyBox.focus();
-  screen.render();
-
-  historyBox.key(['escape', 'q', 'C-c', 'enter'], () => {
-    screen.remove(historyBox);
-    showMainMenu();
-  });
+async function main() {
+  const bot = new MinimalR2Bot();
+  if (!bot.PRIVATE_KEY) {
+    bot.log("🛑 PRIVATE_KEY tidak ditemukan di .env", "error");
+    process.exit(1);
+  }
+  await bot.mainMenu();
 }
 
-function clearLogsAndReturn() {
-  logBox.setContent("");
-  screen.render();
-  addLog("Log telah dibersihkan.", "success");
-  showMainMenu();
-}
-
-// ========== MAIN MENU ==========
-function showMainMenu() {
-  menuBox.setItems([
-    "1. Otomatis Bot",
-    "2. Swap USDC <> R2USD",
-    "3. Swap R2 <> USDC",
-    "4. Add Liquidity",
-    "5. Remove Liquidity",
-    "6. Stake R2USD",
-    "7. Unstake sR2USD",
-    "8. Deposit BTC",
-    "9. Transaction History",
-    "10. Clear Logs",
-    "11. Refresh",
-    "12. Exit"
-  ]);
-  menuBox.select(0);
-  menuBox.focus();
-  screen.render();
-  menuBox.key(['escape', 'q', 'C-c'], () => process.exit(0));
-  menuBox.on('select', (item, index) => {
-    switch (index) {
-      case 0: showOtomatisBotSubMenu(); break;
-      case 1: showManualSwapUSDC_R2USD_SubMenu(); break;
-      case 2: showManualSwapR2_USDC_SubMenu(); break;
-      case 3: showAddLiquiditySubMenu(); break;
-      case 4: showRemoveLiquiditySubMenu(); break;
-      case 5: showStakeR2USDSubMenu(); break;
-      case 6: showUnstakeSR2USDSubMenu(); break;
-      case 7: showDepositBTCSubMenu(); break;
-      case 8: showTransactionHistoryBox(); break;
-      case 9: clearLogsAndReturn(); break;
-      case 10:
-        updateWalletData();
-        addLog("Balance/data telah direfresh (dummy).", "success");
-        break;
-      case 11: process.exit(0); break;
-    }
-  });
-}
-
-// ========== INIT APP ==========
-function initApp() {
-  screen = blessed.screen({
-    smartCSR: true,
-    title: 'R2 Bot Interface'
-  });
-
-  blessed.box({
-    parent: screen,
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: 3,
-    content: '{center} R2 Bot Interface {/center}',
-    style: { fg: 'white', bg: 'blue', bold: true }
-  });
-
-  walletBox = blessed.box({
-    parent: screen,
-    top: 3,
-    left: 0,
-    width: '30%',
-    height: '40%',
-    border: { type: 'line' },
-    style: { border: { fg: 'cyan' } }
-  });
-
-  logBox = blessed.log({
-    parent: screen,
-    top: 3,
-    left: '30%',
-    width: '70%',
-    height: '40%',
-    border: { type: 'line' },
-    style: { border: { fg: 'cyan' } },
-    scrollable: true,
-    scrollbar: { ch: ' ', style: { bg: 'cyan' } }
-  });
-
-  menuBox = blessed.list({
-    parent: screen,
-    bottom: 0,
-    left: 0,
-    width: '100%',
-    height: '60%',
-    border: { type: 'line' },
-    style: {
-      selected: { bg: 'cyan', fg: 'black' },
-      item: { fg: 'cyan' },
-      border: { fg: 'cyan' },
-      focus: { bg: 'cyan' }
-    },
-    keys: true,
-    mouse: true,
-    vi: true
-  });
-
-  promptBox = createPromptBox();
-
-  screen.key(['escape', 'q', 'C-c'], () => process.exit(0));
-
-  updateWalletData();
-  showMainMenu();
-}
-
-// ========== START ==========
-initApp();
+main();
