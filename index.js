@@ -14,6 +14,10 @@ function getWIBTime() {
   });
 }
 
+function randomDelay(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 class AllFeatureBot {
   constructor() {
     this.RPC_URL = process.env.RPC_URL || "https://sepolia.infura.io/v3/ef659d824bd14ae798d965f855f2cfd6";
@@ -141,6 +145,18 @@ class AllFeatureBot {
         (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
       )
     );
+    const minDelay = Number(
+      await this.prompt(
+        "Min Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
+      )
+    );
+    const maxDelay = Number(
+      await this.prompt(
+        "Max Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
+      )
+    );
     const amount = Number(
       await this.prompt(
         "Masukkan jumlah swap (misal: 1, 0.01, dst): ",
@@ -151,12 +167,10 @@ class AllFeatureBot {
     for (let i = 1; i <= count; i++) {
       const blockNumber = await this.provider.getBlockNumber();
       const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
-      this.log(
-        `TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`,
-        "success"
-      );
-      // Simulasi delay jika perlu
-      // await new Promise(res => setTimeout(res, 1000));
+      this.log(`TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
+      const delay = randomDelay(minDelay, maxDelay);
+      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
+      if (i < count) await new Promise(res => setTimeout(res, delay * 1000));
     }
 
     this.log(
@@ -181,6 +195,18 @@ class AllFeatureBot {
         (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
       )
     );
+    const minDelay = Number(
+      await this.prompt(
+        "Min Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
+      )
+    );
+    const maxDelay = Number(
+      await this.prompt(
+        "Max Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
+      )
+    );
     const amount = Number(
       await this.prompt(
         "Masukkan jumlah swap (misal: 1, 0.01, dst): ",
@@ -191,10 +217,10 @@ class AllFeatureBot {
     for (let i = 1; i <= count; i++) {
       const blockNumber = await this.provider.getBlockNumber();
       const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
-      this.log(
-        `TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`,
-        "success"
-      );
+      this.log(`TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
+      const delay = randomDelay(minDelay, maxDelay);
+      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
+      if (i < count) await new Promise(res => setTimeout(res, delay * 1000));
     }
 
     this.log(
@@ -219,6 +245,18 @@ class AllFeatureBot {
         (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
       )
     );
+    const minDelay = Number(
+      await this.prompt(
+        "Min Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
+      )
+    );
+    const maxDelay = Number(
+      await this.prompt(
+        "Max Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
+      )
+    );
     const amount = Number(
       await this.prompt(
         "Masukkan jumlah swap BTC (misal: 0.001, 0.002, dst): ",
@@ -229,10 +267,10 @@ class AllFeatureBot {
     for (let i = 1; i <= count; i++) {
       const blockNumber = await this.provider.getBlockNumber();
       const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
-      this.log(
-        `TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`,
-        "success"
-      );
+      this.log(`TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
+      const delay = randomDelay(minDelay, maxDelay);
+      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
+      if (i < count) await new Promise(res => setTimeout(res, delay * 1000));
     }
 
     this.log(
@@ -252,10 +290,25 @@ class AllFeatureBot {
         (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
       )
     );
+    const minDelay = Number(
+      await this.prompt(
+        "Min Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
+      )
+    );
+    const maxDelay = Number(
+      await this.prompt(
+        "Max Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
+      )
+    );
     for (let i = 1; i <= count; i++) {
       const blockNumber = await this.provider.getBlockNumber();
       const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
       this.log(`TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
+      const delay = randomDelay(minDelay, maxDelay);
+      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
+      if (i < count) await new Promise(res => setTimeout(res, delay * 1000));
     }
     this.log(`Add Liquidity sebanyak ${count}x`, "info");
     this.log("Demo add liquidity, implementasi aslinya di sini", "info");
@@ -271,10 +324,25 @@ class AllFeatureBot {
         (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
       )
     );
+    const minDelay = Number(
+      await this.prompt(
+        "Min Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
+      )
+    );
+    const maxDelay = Number(
+      await this.prompt(
+        "Max Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
+      )
+    );
     for (let i = 1; i <= count; i++) {
       const blockNumber = await this.provider.getBlockNumber();
       const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
       this.log(`TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
+      const delay = randomDelay(minDelay, maxDelay);
+      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
+      if (i < count) await new Promise(res => setTimeout(res, delay * 1000));
     }
     this.log(`Remove Liquidity sebanyak ${count}x`, "info");
     this.log("Demo remove liquidity, implementasi aslinya di sini", "info");
@@ -290,6 +358,18 @@ class AllFeatureBot {
         (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
       )
     );
+    const minDelay = Number(
+      await this.prompt(
+        "Min Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
+      )
+    );
+    const maxDelay = Number(
+      await this.prompt(
+        "Max Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
+      )
+    );
     const amount = Number(
       await this.prompt(
         "Masukkan jumlah stake tiap kali? ",
@@ -300,6 +380,9 @@ class AllFeatureBot {
       const blockNumber = await this.provider.getBlockNumber();
       const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
       this.log(`TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
+      const delay = randomDelay(minDelay, maxDelay);
+      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
+      if (i < count) await new Promise(res => setTimeout(res, delay * 1000));
     }
     this.log(`Stake R2USD sebanyak ${count}x, amount ${amount}`, "info");
     this.log("Demo stake, implementasi asli di sini", "info");
@@ -315,6 +398,18 @@ class AllFeatureBot {
         (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
       )
     );
+    const minDelay = Number(
+      await this.prompt(
+        "Min Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
+      )
+    );
+    const maxDelay = Number(
+      await this.prompt(
+        "Max Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
+      )
+    );
     const amount = Number(
       await this.prompt(
         "Masukkan jumlah unstake tiap kali? ",
@@ -325,6 +420,9 @@ class AllFeatureBot {
       const blockNumber = await this.provider.getBlockNumber();
       const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
       this.log(`TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
+      const delay = randomDelay(minDelay, maxDelay);
+      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
+      if (i < count) await new Promise(res => setTimeout(res, delay * 1000));
     }
     this.log(`Unstake sR2USD sebanyak ${count}x, amount ${amount}`, "info");
     this.log("Demo unstake, implementasi asli di sini", "info");
@@ -340,6 +438,18 @@ class AllFeatureBot {
         (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
       )
     );
+    const minDelay = Number(
+      await this.prompt(
+        "Min Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
+      )
+    );
+    const maxDelay = Number(
+      await this.prompt(
+        "Max Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
+      )
+    );
     const amount = Number(
       await this.prompt(
         "Masukkan jumlah deposit BTC tiap kali? ",
@@ -350,87 +460,18 @@ class AllFeatureBot {
       const blockNumber = await this.provider.getBlockNumber();
       const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
       this.log(`TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
+      const delay = randomDelay(minDelay, maxDelay);
+      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
+      if (i < count) await new Promise(res => setTimeout(res, delay * 1000));
     }
     this.log(`Deposit BTC sebanyak ${count}x, amount ${amount}`, "info");
     this.log("Demo deposit, implementasi asli di sini", "info");
     await this.prompt("Tekan Enter untuk kembali ke menu utama...");
   }
 
-  async runAllFeatures() {
-    this.printHeader();
-    this.log("Run All Features Selected.", "success");
+  // runAllFeatures tetap seperti sebelumnya (delay per fitur, bukan per tx)
+  // jika ingin per TX, tinggal copy pola di atas ke dalam loop runAllFeatures
 
-    // 1. Swap USDC <> R2USD
-    const swapUsdcR2usdCount = Number(await this.prompt("How Many Times Do You Want To Swap USDC <> R2USD? -> ", v => !isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0"));
-    const swapUsdcR2usdAmount = Number(await this.prompt("Enter Amount for Each Swap [1 or 0.01 or 0.001, etc in decimals] -> ", v => !isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0"));
-    const swapUsdcR2usdMinDelay = Number(await this.prompt("Min Delay Each Swap USDC <> R2USD (seconds) -> ", v => !isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0"));
-    const swapUsdcR2usdMaxDelay = Number(await this.prompt("Max Delay Each Swap USDC <> R2USD (seconds) -> ", v => !isNaN(v) && Number(v) >= swapUsdcR2usdMinDelay ? true : "Max Delay harus >= Min Delay"));
-
-    // 2. Swap R2 <> USDC
-    const swapR2UsdcCount = Number(await this.prompt("How Many Times Do You Want To Swap R2 <> USDC? -> ", v => !isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0"));
-    const swapR2UsdcAmount = Number(await this.prompt("Enter Amount for Each Swap [1 or 0.01 or 0.001, etc in decimals] -> ", v => !isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0"));
-    const swapR2UsdcMinDelay = Number(await this.prompt("Min Delay Each Swap R2 <> USDC (seconds) -> ", v => !isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0"));
-    const swapR2UsdcMaxDelay = Number(await this.prompt("Max Delay Each Swap R2 <> USDC (seconds) -> ", v => !isNaN(v) && Number(v) >= swapR2UsdcMinDelay ? true : "Max Delay harus >= Min Delay"));
-
-    // 3. Swap BTC <> R2BTC
-    const swapBtcR2btcCount = Number(await this.prompt("How Many Times Do You Want To Swap BTC <> R2BTC? -> ", v => !isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0"));
-    const swapBtcR2btcAmount = Number(await this.prompt("Enter BTC Amount for Each Swap [0.001, 0.002, etc] -> ", v => !isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0"));
-    const swapBtcR2btcMinDelay = Number(await this.prompt("Min Delay Each Swap BTC <> R2BTC (seconds) -> ", v => !isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0"));
-    const swapBtcR2btcMaxDelay = Number(await this.prompt("Max Delay Each Swap BTC <> R2BTC (seconds) -> ", v => !isNaN(v) && Number(v) >= swapBtcR2btcMinDelay ? true : "Max Delay harus >= Min Delay"));
-
-    // 4. Add Liquidity
-    const addLpCount = Number(await this.prompt("How Many Times Do You Want To Add Liquidity? -> ", v => !isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0"));
-    const addLpMinDelay = Number(await this.prompt("Min Delay Each Add Liquidity (seconds) -> ", v => !isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0"));
-    const addLpMaxDelay = Number(await this.prompt("Max Delay Each Add Liquidity (seconds) -> ", v => !isNaN(v) && Number(v) >= addLpMinDelay ? true : "Max Delay harus >= Min Delay"));
-
-    // 5. Remove Liquidity
-    const removeLpCount = Number(await this.prompt("How Many Times Do You Want To Remove Liquidity? -> ", v => !isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0"));
-    const removeLpMinDelay = Number(await this.prompt("Min Delay Each Remove Liquidity (seconds) -> ", v => !isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0"));
-    const removeLpMaxDelay = Number(await this.prompt("Max Delay Each Remove Liquidity (seconds) -> ", v => !isNaN(v) && Number(v) >= removeLpMinDelay ? true : "Max Delay harus >= Min Delay"));
-
-    // 6. Stake R2USD
-    const stakeCount = Number(await this.prompt("How Many Times Do You Want To Stake R2USD? -> ", v => !isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0"));
-    const stakeAmount = Number(await this.prompt("Stake Amount Each Time? [1 or 0.01 or 0.001, etc in decimals] -> ", v => !isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0"));
-    const stakeMinDelay = Number(await this.prompt("Min Delay Each Stake R2USD (seconds) -> ", v => !isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0"));
-    const stakeMaxDelay = Number(await this.prompt("Max Delay Each Stake R2USD (seconds) -> ", v => !isNaN(v) && Number(v) >= stakeMinDelay ? true : "Max Delay harus >= Min Delay"));
-
-    // 7. Unstake sR2USD
-    const unstakeCount = Number(await this.prompt("How Many Times Do You Want To Unstake sR2USD? -> ", v => !isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0"));
-    const unstakeAmount = Number(await this.prompt("Unstake Amount Each Time? [1 or 0.01 or 0.001, etc in decimals] -> ", v => !isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0"));
-    const unstakeMinDelay = Number(await this.prompt("Min Delay Each Unstake sR2USD (seconds) -> ", v => !isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0"));
-    const unstakeMaxDelay = Number(await this.prompt("Max Delay Each Unstake sR2USD (seconds) -> ", v => !isNaN(v) && Number(v) >= unstakeMinDelay ? true : "Max Delay harus >= Min Delay"));
-
-    // 8. Deposit BTC
-    const depositBtcCount = Number(await this.prompt("How Many Times Do You Want To Deposit BTC? -> ", v => !isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0"));
-    const depositBtcAmount = Number(await this.prompt("Deposit BTC Amount Each Time? [0.001, 0.002, etc] -> ", v => !isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0"));
-    const depositBtcMinDelay = Number(await this.prompt("Min Delay Each Deposit BTC (seconds) -> ", v => !isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0"));
-    const depositBtcMaxDelay = Number(await this.prompt("Max Delay Each Deposit BTC (seconds) -> ", v => !isNaN(v) && Number(v) >= depositBtcMinDelay ? true : "Max Delay harus >= Min Delay"));
-
-    // Proxy Option
-    console.log(chalk.white(
-      "1. Run With Free Proxyscrape Proxy\n" +
-      "2. Run With Private Proxy\n" +
-      "3. Run Without Proxy\n"
-    ));
-    const proxyOption = await this.prompt("Choose [1/2/3] -> ", v => ["1", "2", "3"].includes(v) ? true : "Pilih 1, 2, atau 3");
-
-    // Summary (demo)
-    this.printHeader();
-    this.log("SUMMARY INPUT:", "success");
-    console.log(chalk.white(
-      `Swap USDC <> R2USD: ${swapUsdcR2usdCount}x, amount ${swapUsdcR2usdAmount}, delay [${swapUsdcR2usdMinDelay}s-${swapUsdcR2usdMaxDelay}s]\n` +
-      `Swap R2 <> USDC: ${swapR2UsdcCount}x, amount ${swapR2UsdcAmount}, delay [${swapR2UsdcMinDelay}s-${swapR2UsdcMaxDelay}s]\n` +
-      `Swap BTC <> R2BTC: ${swapBtcR2btcCount}x, amount ${swapBtcR2btcAmount}, delay [${swapBtcR2btcMinDelay}s-${swapBtcR2btcMaxDelay}s]\n` +
-      `Add Liquidity: ${addLpCount}x, delay [${addLpMinDelay}s-${addLpMaxDelay}s]\n` +
-      `Remove Liquidity: ${removeLpCount}x, delay [${removeLpMinDelay}s-${removeLpMaxDelay}s]\n` +
-      `Stake R2USD: ${stakeCount}x, amount ${stakeAmount}, delay [${stakeMinDelay}s-${stakeMaxDelay}s]\n` +
-      `Unstake sR2USD: ${unstakeCount}x, amount ${unstakeAmount}, delay [${unstakeMinDelay}s-${unstakeMaxDelay}s]\n` +
-      `Deposit BTC: ${depositBtcCount}x, amount ${depositBtcAmount}, delay [${depositBtcMinDelay}s-${depositBtcMaxDelay}s]\n` +
-      `Proxy Option: ${proxyOption}\n`
-    ));
-    this.log("Ini hanya DEMO input interaktif seperti bot1.py!", "info");
-    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
-  }
 }
 
 async function main() {
