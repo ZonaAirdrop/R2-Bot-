@@ -158,7 +158,7 @@ class AllFeatureBot {
 
     this.contracts = {
       usdc: "0x8BEbFCBe5468F146533C182dF3DFbF5ff9BE00E2",                      
-      r2usd: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",                    
+      r2usd: "0x20c54C5F742F123Abb49a982BFe0af47edb38756",                    
       r2: "0xb816bB88f836EA75Ca4071B46FF285f690C43bb7",                       
 
       router_usdc_r2usd: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",        
