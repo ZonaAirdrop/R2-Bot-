@@ -2,7 +2,7 @@ import "dotenv/config";
 import blessed from "blessed";
 import { ethers } from "ethers";
 
-// ========== Tambahan ABI dan Instance Contract ==========
+// ========== ABI ==============
 const ERC20_ABI = [
   "function balanceOf(address owner) view returns (uint256)",
   "function decimals() view returns (uint8)",
@@ -13,31 +13,9 @@ const ERC20_ABI = [
 const ROUTER_ABI = [
   "function swapExactTokensForTokens(uint256,uint256,address[],address,uint256) returns (uint256[])",
   "function addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256) returns (uint256,uint256,uint256)"
-  // Tambah method lain sesuai kebutuhan router kamu
 ];
 
-// Contract instance untuk akses smart contract (siap dipakai di fitur selanjutnya)
-const usdc = new ethers.Contract(
-  "0xc7BcCf452965Def7d5D9bF02943e3348F758D3CB",
-  ERC20_ABI,
-  wallet
-);
-const r2usd = new ethers.Contract(
-  "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",
-  ERC20_ABI,
-  wallet
-);
-const router = new ethers.Contract(
-  "0x47d1B0623bB3E557bF8544C159c9ae51D091F8a2",
-  ROUTER_ABI,
-  wallet
-);
-
-// ==========================================================================
-// == DI BAWAH INI, TIDAK ADA YANG DIUBAH DARI FILE KAMU ====================
-// ==========================================================================
-
-// Config
+// ========== CONFIG ===========
 const RPC_URL = process.env.RPC_URL || "https://sepolia.infura.io/v3/ef659d824bd14ae798d965f855f2cfd6";
 const PRIVATE_KEY = process.env.PRIVATE_KEY;
 
@@ -65,7 +43,12 @@ const CONFIG = {
   NETWORK_NAME: "Sepolia Testnet"
 };
 
-// State
+// ========== CONTRACT INSTANCE ==========
+const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, ERC20_ABI, wallet);
+const r2usd = new ethers.Contract(CONFIG.R2USD_ADDRESS, ERC20_ABI, wallet);
+const router = new ethers.Contract(CONFIG.SWAP_ROUTER, ROUTER_ABI, wallet);
+
+// ========== STATE ==========
 let walletInfo = {
   balances: {
     native: "0",
@@ -85,7 +68,7 @@ let operationsHistory = [];
 let currentNonce = 0;
 let screen, walletBox, logBox, menuBox;
 
-// Helper
+// ========== HELPER ==========
 function addLog(message, type = "info") {
   const colors = { info: "white", error: "red", success: "green", debug: "yellow" };
   const timestamp = new Date().toLocaleString();
@@ -93,19 +76,24 @@ function addLog(message, type = "info") {
   screen.render();
 }
 
+function formatToken(amount, decimals) {
+  return Number(amount) / Number(10n ** BigInt(decimals));
+}
+
+async function fetchBalance(tokenAddress, decimals) {
+  const contract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+  const raw = await contract.balanceOf(wallet.address);
+  return formatToken(raw, decimals);
+}
+
 async function updateWalletData() {
   try {
-    const provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
-    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-    walletInfo.balances.native = "0.0000";
-    walletInfo.balances.USDC = "0";
-    walletInfo.balances.BTC = "0";
-    walletInfo.balances.R2USD = "0";
-    walletInfo.balances.sR2USD = "0";
-    walletInfo.balances.R2 = "0";
-    walletInfo.balances.LP_R2USD_sR2USD = "0";
-    walletInfo.balances.LP_USDC_R2USD = "0";
-    walletInfo.balances.LP_R2_R2USD = "0";
+    walletInfo.balances.native = Number(await provider.getBalance(wallet.address)) / 1e18;
+    const usdcDec = await usdc.decimals();
+    const r2usdDec = await r2usd.decimals();
+    walletInfo.balances.USDC = await fetchBalance(CONFIG.USDC_ADDRESS, usdcDec);
+    walletInfo.balances.R2USD = await fetchBalance(CONFIG.R2USD_ADDRESS, r2usdDec);
+    // Anda bisa tambahkan fetch lain sesuai kebutuhan
     updateWalletDisplay();
   } catch (error) {
     addLog(`Balance update failed: ${error.message}`, "error");
@@ -130,7 +118,6 @@ function updateWalletDisplay() {
   screen.render();
 }
 
-// PromptBox helper
 function createPromptBox() {
   const prompt = blessed.prompt({
     parent: screen,
