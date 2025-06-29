@@ -148,16 +148,16 @@ async function updateWalletData() {
 
 function updateWalletDisplay() {
   const shortAddress = walletInfo.address ? `${walletInfo.address.slice(0, 6)}...${walletInfo.address.slice(-4)}` : "N/A";
-  const content = `┌── Address   : {bright-yellow-fg}${shortAddress}{/bright-yellow-fg}
-│   ├── ETH           : {bright-green-fg}${Number(walletInfo.balances.native).toFixed(4)}{/bright-green-fg}
-│   ├── USDC          : {bright-green-fg}${Number(walletInfo.balances.USDC).toFixed(2)}{/bright-green-fg}
-│   ├── R2USD         : {bright-green-fg}${Number(walletInfo.balances.R2USD).toFixed(4)}{/bright-green-fg}
-│   ├── sR2USD        : {bright-green-fg}${Number(walletInfo.balances.sR2USD).toFixed(4)}{/bright-green-fg}
-│   ├── R2            : {bright-green-fg}${Number(walletInfo.balances.R2).toFixed(4)}{/bright-green-fg}
-│   ├── LP R2USD-sR2USD : {bright-green-fg}${Number(walletInfo.balances.LP_R2USD_sR2USD).toFixed(4)}{/bright-green-fg}
-│   ├── LP USDC-R2USD : {bright-green-fg}${Number(walletInfo.balances.LP_USDC_R2USD).toFixed(4)}{/bright-green-fg}
-│   ├── LP R2-R2USD   : {bright-green-fg}${Number(walletInfo.balances.LP_R2_R2USD).toFixed(4)}{/bright-green-fg}
-│   └── BTC           : {bright-green-fg}${Number(walletInfo.balances.BTC).toFixed(8)}{/bright-green-fg}
+  const content = `┌── Address   : {cyan-fg}${shortAddress}{/cyan-fg}
+│   ├── ETH           : {light-green-fg}${Number(walletInfo.balances.native).toFixed(4)}{/light-green-fg}
+│   ├── USDC          : {light-green-fg}${Number(walletInfo.balances.USDC).toFixed(2)}{/light-green-fg}
+│   ├── R2USD         : {light-green-fg}${Number(walletInfo.balances.R2USD).toFixed(4)}{/light-green-fg}
+│   ├── sR2USD        : {light-green-fg}${Number(walletInfo.balances.sR2USD).toFixed(4)}{/light-green-fg}
+│   ├── R2            : {light-green-fg}${Number(walletInfo.balances.R2).toFixed(4)}{/light-green-fg}
+│   ├── LP R2USD-sR2USD : {light-green-fg}${Number(walletInfo.balances.LP_R2USD_sR2USD).toFixed(4)}{/light-green-fg}
+│   ├── LP USDC-R2USD : {light-green-fg}${Number(walletInfo.balances.LP_USDC_R2USD).toFixed(4)}{/light-green-fg}
+│   ├── LP R2-R2USD   : {light-green-fg}${Number(walletInfo.balances.LP_R2_R2USD).toFixed(4)}{/light-green-fg}
+│   └── BTC           : {light-green-fg}${Number(walletInfo.balances.BTC).toFixed(8)}{/light-green-fg}
 └── Network        : {bright-cyan-fg}${CONFIG.NETWORK_NAME}{/bright-cyan-fg}`;
   walletBox.setContent(content);
   screen.render();
@@ -477,8 +477,8 @@ function showForm(title, fields, onSubmit) {
     left: 'center',
     width: '60%',
     height: '60%',
-    border: { type: 'line' },
-    style: { border: { fg: 'cyan' } }
+    border: { type: 'line' }, style: { fg: 'cyan' },
+    style: { border: { fg: 'cyan' }, fg: 'cyan' }
   });
 
   const inputs = {};
@@ -513,7 +513,7 @@ function showForm(title, fields, onSubmit) {
     width: 10,
     height: 1,
     content: 'Submit',
-    style: { bg: 'green' }
+    style: { bg: 'cyan', fg: 'black', hover: { bg: 'light-cyan' } }
   });
 
   const cancel = blessed.button({
@@ -554,7 +554,7 @@ function showLiquidityMenu(action) {
     left: 'center',
     width: '60%',
     height: '60%',
-    border: { type: 'line' },
+    border: { type: 'line' }, style: { fg: 'cyan' },
     style: { selected: { bg: 'blue' }, border: { fg: 'cyan' } },
     items: [
       `${action === "add" ? "Add" : "Remove"} R2-USDC Liquidity`,
@@ -675,8 +675,8 @@ function showTransactionHistory() {
     left: 'center',
     width: '80%',
     height: '80%',
-    border: { type: 'line' },
-    style: { border: { fg: 'cyan' } },
+    border: { type: 'line' }, style: { fg: 'cyan' },
+    style: { border: { fg: 'cyan' }, fg: 'cyan' },
     scrollable: true,
     alwaysScroll: true,
     scrollbar: {
@@ -742,8 +742,8 @@ function initApp() {
     left: 0,
     width: '30%',
     height: '40%',
-    border: { type: 'line' },
-    style: { border: { fg: 'cyan' } }
+    border: { type: 'line' }, style: { fg: 'cyan' },
+    style: { border: { fg: 'cyan' }, fg: 'cyan' }
   });
 
   // Create log box
@@ -753,8 +753,8 @@ function initApp() {
     left: '30%',
     width: '70%',
     height: '40%',
-    border: { type: 'line' },
-    style: { border: { fg: 'cyan' } },
+    border: { type: 'line' }, style: { fg: 'cyan' },
+    style: { border: { fg: 'cyan' }, fg: 'cyan' },
     scrollable: true,
     scrollbar: {
       ch: ' ',
@@ -771,7 +771,7 @@ function initApp() {
     left: 0,
     width: '100%',
     height: '60%',
-    border: { type: 'line' },
+    border: { type: 'line' }, style: { fg: 'cyan' },
     style: { 
       selected: { bg: 'blue' }, 
       border: { fg: 'cyan' } 
