@@ -34,14 +34,18 @@ class AllFeatureBot {
     
     // Contract addresses (replace with your actual contract addresses)
     this.contracts = {
-      usdc: "0xYourUsdcContractAddress",
-      r2usd: "0xYourR2UsdContractAddress",
-      r2: "0xYourR2ContractAddress",
-      staking: "0xYourStakingContractAddress",
-      btcBridge: "0xYourBtcBridgeContractAddress",
-      swapRouter: "0xYourSwapRouterAddress"
-    };
-    
+  usdc: "0xc7BcCf452965Def7d5D9bF02943e3348F758D3CB",
+  btc: "0x0f3B4ae3f2b63B21b12e423444d065CC82e3DfA5",
+  r2usd: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",
+  sr2usd: "0x006CbF409CA275bA022111dB32BDAE054a97d488",
+  r2: "0xb816bB88f836EA75Ca4071B46FF285f690C43bb7",
+  swapRouter: "0x47d1B0623bB3E557bF8544C159c9ae51D091F8a2",
+  btcSwapRouter: "0x23b2615d783e16f14b62efa125306c7c69b4941a",
+  staking: "0x006cbf409ca275ba022111db32bdae054a97d488",
+  lpR2usdSr2usd: "0xee567fe1712faf6149d80da1e6934e354124cfe3",
+  lpUsdcR2usd: "0xee567fe1712faf6149d80da1e6934e354124cfe3",
+  lpR2R2usd: "0xee567fe1712faf6149d80da1e6934e354124cfe3",
+};
     // Contract ABIs (simplified examples)
     this.abis = {
       erc20: [
