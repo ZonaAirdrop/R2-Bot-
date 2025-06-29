@@ -37,7 +37,6 @@ let walletInfo = {
 let operationsHistory = [
   { type: "Add Liquidity", amount: "100", blockNumber: "123456", txHash: "0xabc123" },
   { type: "Swap", amount: "10", blockNumber: "123457", txHash: "0xdef456" },
-  // Tambahkan transaksi dummy/real di sini jika ingin
 ];
 let currentNonce = 0;
 let screen, walletBox, logBox, menuBox;
@@ -70,7 +69,6 @@ function updateWalletDisplay() {
 }
 
 async function updateWalletData() {
-  // Dummy untuk demo, bisa ganti dengan fetch asli
   walletInfo.balances.native = "1.2345";
   walletInfo.balances.USDC = "1000";
   walletInfo.balances.BTC = "0.005";
@@ -107,6 +105,7 @@ let promptBox;
 // ========== SUBMENUS ==========
 
 function showSimpleSubmenu(title, items) {
+  // Clean up any submenu before
   const subMenu = blessed.list({
     parent: screen,
     top: 'center',
@@ -129,13 +128,11 @@ function showSimpleSubmenu(title, items) {
   subMenu.focus();
   screen.render();
 
-  // ESC/q/Ctrl+C bisa kembali ke menu utama
   subMenu.key(['escape', 'q', 'C-c'], () => {
     screen.remove(subMenu);
     showMainMenu();
   });
 
-  // ENTER/SELECT pada list
   subMenu.on('select', (item, idx) => {
     if (idx === items.length - 1 || /back/i.test(item.content)) {
       screen.remove(subMenu);
@@ -148,7 +145,6 @@ function showSimpleSubmenu(title, items) {
   });
 }
 
-// Submenu untuk semua menu yang perlu submenu
 function showOtomatisBotSubMenu() {
   showSimpleSubmenu("Otomatis Bot", [
     "Jalankan Bot Otomatis (Soon)",
@@ -246,7 +242,6 @@ function clearLogsAndReturn() {
   logBox.setContent("");
   screen.render();
   addLog("Log telah dibersihkan.", "success");
-  // Langsung kembali ke main menu (tanpa box/menu apapun)
   showMainMenu();
 }
 
@@ -281,8 +276,8 @@ function showMainMenu() {
       case 5: showStakeR2USDSubMenu(); break;
       case 6: showUnstakeSR2USDSubMenu(); break;
       case 7: showDepositBTCSubMenu(); break;
-      case 8: showTransactionHistoryBox(); break; // langsung tampilkan history
-      case 9: clearLogsAndReturn(); break;        // langsung clear log
+      case 8: showTransactionHistoryBox(); break;
+      case 9: clearLogsAndReturn(); break;
       case 10:
         updateWalletData();
         addLog("Balance/data telah direfresh (dummy).", "success");
@@ -300,7 +295,6 @@ function initApp() {
     title: 'R2 Bot Interface'
   });
 
-  // Header
   blessed.box({
     parent: screen,
     top: 0,
