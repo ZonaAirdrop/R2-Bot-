@@ -3,34 +3,137 @@ import readline from "readline";
 import chalk from "chalk";
 import { ethers } from "ethers";
 
-// ====== UNISWAP V2 ROUTER ABI (FULL, JSON) ======
+// ====== UNISWAP V2 ROUTER ABI (MINIMAL, + ADD/REMOVE/STAKE/SWAP) ======
 const routerAbi = [
-  {"inputs":[{"internalType":"address","name":"_factory","type":"address"},{"internalType":"address","name":"_WETH","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},
-  {"inputs":[],"name":"WETH","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
-  {"inputs":[{"internalType":"address","name":"tokenA","type":"address"},{"internalType":"address","name":"tokenB","type":"address"},{"internalType":"uint256","name":"amountADesired","type":"uint256"},{"internalType":"uint256","name":"amountBDesired","type":"uint256"},{"internalType":"uint256","name":"amountAMin","type":"uint256"},{"internalType":"uint256","name":"amountBMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"addLiquidity","outputs":[{"internalType":"uint256","name":"amountA","type":"uint256"},{"internalType":"uint256","name":"amountB","type":"uint256"},{"internalType":"uint256","name":"liquidity","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
-  {"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"amountTokenDesired","type":"uint256"},{"internalType":"uint256","name":"amountTokenMin","type":"uint256"},{"internalType":"uint256","name":"amountETHMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"addLiquidityETH","outputs":[{"internalType":"uint256","name":"amountToken","type":"uint256"},{"internalType":"uint256","name":"amountETH","type":"uint256"},{"internalType":"uint256","name":"liquidity","type":"uint256"}],"stateMutability":"payable","type":"function"},
-  {"inputs":[],"name":"factory","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},
-  {"inputs":[{"internalType":"uint256","name":"amountOut","type":"uint256"},{"internalType":"uint256","name":"reserveIn","type":"uint256"},{"internalType":"uint256","name":"reserveOut","type":"uint256"}],"name":"getAmountIn","outputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"}],"stateMutability":"pure","type":"function"},
-  {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"reserveIn","type":"uint256"},{"internalType":"uint256","name":"reserveOut","type":"uint256"}],"name":"getAmountOut","outputs":[{"internalType":"uint256","name":"amountOut","type":"uint256"}],"stateMutability":"pure","type":"function"},
-  {"inputs":[{"internalType":"uint256","name":"amountOut","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"}],"name":"getAmountsIn","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"view","type":"function"},
-  {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"}],"name":"getAmountsOut","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"view","type":"function"},
-  {"inputs":[{"internalType":"uint256","name":"amountA","type":"uint256"},{"internalType":"uint256","name":"reserveA","type":"uint256"},{"internalType":"uint256","name":"reserveB","type":"uint256"}],"name":"quote","outputs":[{"internalType":"uint256","name":"amountB","type":"uint256"}],"stateMutability":"pure","type":"function"},
-  {"inputs":[{"internalType":"address","name":"tokenA","type":"address"},{"internalType":"address","name":"tokenB","type":"address"},{"internalType":"uint256","name":"liquidity","type":"uint256"},{"internalType":"uint256","name":"amountAMin","type":"uint256"},{"internalType":"uint256","name":"amountBMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"removeLiquidity","outputs":[{"internalType":"uint256","name":"amountA","type":"uint256"},{"internalType":"uint256","name":"amountB","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
-  {"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"liquidity","type":"uint256"},{"internalType":"uint256","name":"amountTokenMin","type":"uint256"},{"internalType":"uint256","name":"amountETHMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"removeLiquidityETH","outputs":[{"internalType":"uint256","name":"amountToken","type":"uint256"},{"internalType":"uint256","name":"amountETH","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
-  {"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"liquidity","type":"uint256"},{"internalType":"uint256","name":"amountTokenMin","type":"uint256"},{"internalType":"uint256","name":"amountETHMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"removeLiquidityETHSupportingFeeOnTransferTokens","outputs":[{"internalType":"uint256","name":"amountETH","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
-  {"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"liquidity","type":"uint256"},{"internalType":"uint256","name":"amountTokenMin","type":"uint256"},{"internalType":"uint256","name":"amountETHMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"bool","name":"approveMax","type":"bool"},{"internalType":"uint8","name":"v","type":"uint8"},{"internalType":"bytes32","name":"r","type":"bytes32"},{"internalType":"bytes32","name":"s","type":"bytes32"}],"name":"removeLiquidityETHWithPermit","outputs":[{"internalType":"uint256","name":"amountToken","type":"uint256"},{"internalType":"uint256","name":"amountETH","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
-  {"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"liquidity","type":"uint256"},{"internalType":"uint256","name":"amountTokenMin","type":"uint256"},{"internalType":"uint256","name":"amountETHMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"bool","name":"approveMax","type":"bool"},{"internalType":"uint8","name":"v","type":"uint8"},{"internalType":"bytes32","name":"r","type":"bytes32"},{"internalType":"bytes32","name":"s","type":"bytes32"}],"name":"removeLiquidityETHWithPermitSupportingFeeOnTransferTokens","outputs":[{"internalType":"uint256","name":"amountETH","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
-  {"inputs":[{"internalType":"address","name":"tokenA","type":"address"},{"internalType":"address","name":"tokenB","type":"address"},{"internalType":"uint256","name":"liquidity","type":"uint256"},{"internalType":"uint256","name":"amountAMin","type":"uint256"},{"internalType":"uint256","name":"amountBMin","type":"uint256"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"},{"internalType":"bool","name":"approveMax","type":"bool"},{"internalType":"uint8","name":"v","type":"uint8"},{"internalType":"bytes32","name":"r","type":"bytes32"},{"internalType":"bytes32","name":"s","type":"bytes32"}],"name":"removeLiquidityWithPermit","outputs":[{"internalType":"uint256","name":"amountA","type":"uint256"},{"internalType":"uint256","name":"amountB","type":"uint256"}],"stateMutability":"nonpayable","type":"function"},
-  {"stateMutability":"payable","type":"receive"},
-  {"inputs":[{"internalType":"uint256","name":"amountOut","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapETHForExactTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"payable","type":"function"},
-  {"inputs":[{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactETHForTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"payable","type":"function"},
-  {"inputs":[{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactETHForTokensSupportingFeeOnTransferTokens","outputs":[],"stateMutability":"payable","type":"function"},
-  {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForETH","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"nonpayable","type":"function"},
-  {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForETHSupportingFeeOnTransferTokens","outputs":[],"stateMutability":"nonpayable","type":"function"},
-  {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"nonpayable","type":"function"},
-  {"inputs":[{"internalType":"uint256","name":"amountIn","type":"uint256"},{"internalType":"uint256","name":"amountOutMin","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapExactTokensForTokensSupportingFeeOnTransferTokens","outputs":[],"stateMutability":"nonpayable","type":"function"},
-  {"inputs":[{"internalType":"uint256","name":"amountOut","type":"uint256"},{"internalType":"uint256","name":"amountInMax","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapTokensForExactETH","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"nonpayable","type":"function"},
-  {"inputs":[{"internalType":"uint256","name":"amountOut","type":"uint256"},{"internalType":"uint256","name":"amountInMax","type":"uint256"},{"internalType":"address[]","name":"path","type":"address[]"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"deadline","type":"uint256"}],"name":"swapTokensForExactTokens","outputs":[{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],"stateMutability":"nonpayable","type":"function"}
+  // WETH
+  {
+    "inputs": [],
+    "name": "WETH",
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  // getAmountsOut
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "amountIn", "type": "uint256" },
+      { "internalType": "address[]", "name": "path", "type": "address[]" }
+    ],
+    "name": "getAmountsOut",
+    "outputs": [{ "internalType": "uint256[]", "name": "amounts", "type": "uint256[]" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  // swapExactTokensForTokens
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "amountIn", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountOutMin", "type": "uint256" },
+      { "internalType": "address[]", "name": "path", "type": "address[]" },
+      { "internalType": "address", "name": "to", "type": "address" },
+      { "internalType": "uint256", "name": "deadline", "type": "uint256" }
+    ],
+    "name": "swapExactTokensForTokens",
+    "outputs": [{ "internalType": "uint256[]", "name": "amounts", "type": "uint256[]" }],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  // addLiquidity
+  {
+    "inputs": [
+      { "internalType": "address", "name": "tokenA", "type": "address" },
+      { "internalType": "address", "name": "tokenB", "type": "address" },
+      { "internalType": "uint256", "name": "amountADesired", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountBDesired", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountAMin", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountBMin", "type": "uint256" },
+      { "internalType": "address", "name": "to", "type": "address" },
+      { "internalType": "uint256", "name": "deadline", "type": "uint256" }
+    ],
+    "name": "addLiquidity",
+    "outputs": [
+      { "internalType": "uint256", "name": "amountA", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountB", "type": "uint256" },
+      { "internalType": "uint256", "name": "liquidity", "type": "uint256" }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  // removeLiquidity
+  {
+    "inputs": [
+      { "internalType": "address", "name": "tokenA", "type": "address" },
+      { "internalType": "address", "name": "tokenB", "type": "address" },
+      { "internalType": "uint256", "name": "liquidity", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountAMin", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountBMin", "type": "uint256" },
+      { "internalType": "address", "name": "to", "type": "address" },
+      { "internalType": "uint256", "name": "deadline", "type": "uint256" }
+    ],
+    "name": "removeLiquidity",
+    "outputs": [
+      { "internalType": "uint256", "name": "amountA", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountB", "type": "uint256" }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+];
+
+// ====== ERC20 ABI MINIMAL + STAKE ======
+const erc20abi = [
+  {
+    "constant": false,
+    "inputs": [
+      { "name": "spender", "type": "address" },
+      { "name": "amount", "type": "uint256" }
+    ],
+    "name": "approve",
+    "outputs": [{ "name": "", "type": "bool" }],
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      { "name": "recipient", "type": "address" },
+      { "name": "amount", "type": "uint256" }
+    ],
+    "name": "transfer",
+    "outputs": [{ "name": "", "type": "bool" }],
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [{ "name": "account", "type": "address" }],
+    "name": "balanceOf",
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      { "name": "owner", "type": "address" },
+      { "name": "spender", "type": "address" }
+    ],
+    "name": "allowance",
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "decimals",
+    "outputs": [{ "name": "", "type": "uint8" }],
+    "type": "function"
+  },
+  // Fungsi staking (method selector 0x1a5f0f00)
+  {
+    "constant": false,
+    "inputs": [{ "name": "amount", "type": "uint256" }],
+    "name": "stake",
+    "outputs": [],
+    "type": "function"
+  }
 ];
 
 // ================= BOT IMPLEMENTASI =================
@@ -49,25 +152,23 @@ class AllFeatureBot {
     this.state = {};
 
     this.contracts = {
-      usdc:   "0x8BEbFCBe5468F146533C182dF3DFbF5ff9BE00E2", // ✅ USDC sebenarnya!
-r2usd:  "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",
-r2:     "0xb816bB88f836EA75Ca4071B46FF285f690C43bb7",
-router_usdc_r2usd: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365", // ✅ Router pool USDC-R2USD
-router_usdc_r2:    "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3",  // ✅ Router pool USDC-R2
-lp_r2usd_sr2usd:   "0xe85A06C238439F981c90b2C91393b2F3c46e27FC",
-staking_r2usd:     "0x006CbF409CA275bA022111dB32BDAE054a97d488",
-staking_btc:       "0x23b2615d783E16F14B62EfA125306c7c69B4941A"
+      usdc: "0x8BEbFCBe5468F146533C182dF3DFbF5ff9BE00E2",                      
+      r2usd: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",                    
+      r2: "0xb816bB88f836EA75Ca4071B46FF285f690C43bb7",                       
+
+      router_usdc_r2usd: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",        
+      router_usdc_r2: "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3",           
+
+      lp_r2usd_sr2usd: "0xe85A06C238439F981c90b2C91393b2F3c46e27FC",         
+      remove_liquidity: "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3",         
+
+      staking_r2usd: "0x006CbF409CA275bA022111dB32BDAE054a97d488",            
+      staking_btc: "0x23b2615d783E16F14B62EfA125306c7c69B4941A",              
     };
 
     this.abis = {
-      erc20: [
-        "function approve(address spender, uint256 amount) returns (bool)",
-        "function transfer(address recipient, uint256 amount) returns (bool)",
-        "function balanceOf(address account) view returns (uint256)",
-        "function allowance(address owner, address spender) view returns (uint256)",
-        "function decimals() view returns (uint8)"
-      ],
-      swap: routerAbi, // <-- Pakai full JSON ABI
+      erc20: erc20abi,
+      swap: routerAbi,
     };
   }
 
@@ -207,7 +308,8 @@ staking_btc:       "0x23b2615d783E16F14B62EfA125306c7c69B4941A"
     try {
       const usdcContract = new ethers.Contract(this.contracts.usdc, this.abis.erc20, this.wallet);
       const r2usdContract = new ethers.Contract(this.contracts.r2usd, this.abis.erc20, this.wallet);
-      const swapRouterContract = new ethers.Contract(this.contracts.swapRouter, this.abis.swap, this.wallet);
+      const swapRouterAddress = this.contracts.router_usdc_r2usd;
+      const swapRouterContract = new ethers.Contract(swapRouterAddress, this.abis.swap, this.wallet);
 
       const usdcDecimals = await usdcContract.decimals();
       const r2usdDecimals = await r2usdContract.decimals();
@@ -223,7 +325,7 @@ staking_btc:       "0x23b2615d783E16F14B62EfA125306c7c69B4941A"
         path = [this.contracts.r2usd, this.contracts.usdc];
       }
       const amountInWei = ethers.parseUnits(amount, decimalsIn);
-      allowance = await tokenIn.allowance(this.wallet.address, this.contracts.swapRouter);
+      allowance = await tokenIn.allowance(this.wallet.address, swapRouterAddress);
       balance = await tokenIn.balanceOf(this.wallet.address);
 
       // Debug info
@@ -233,7 +335,6 @@ staking_btc:       "0x23b2615d783E16F14B62EfA125306c7c69B4941A"
       this.log(`Amount swap: ${ethers.formatUnits(amountInWei, decimalsIn)}`, "info");
       this.log(`Path swap: [${path.join(", ")}]`, "info");
 
-      // ethers v6: semua return value bigint, gunakan operator perbandingan
       if (BigInt(balance) < BigInt(amountInWei)) {
         this.log(`Saldo tidak cukup untuk swap (${ethers.formatUnits(balance, decimalsIn)} < ${amount})`, "error");
         await this.prompt("Tekan Enter untuk kembali ke menu utama...");
@@ -242,7 +343,7 @@ staking_btc:       "0x23b2615d783E16F14B62EfA125306c7c69B4941A"
 
       if (BigInt(allowance) < BigInt(amountInWei)) {
         this.log("Allowance kurang. Mengirim approve...", "info");
-        const approveTx = await tokenIn.approve(this.contracts.swapRouter, amountInWei);
+        const approveTx = await tokenIn.approve(swapRouterAddress, amountInWei);
         await approveTx.wait();
         this.log(`Approve berhasil: ${approveTx.hash}`, "success");
       } else {
@@ -307,13 +408,47 @@ staking_btc:       "0x23b2615d783E16F14B62EfA125306c7c69B4941A"
     await this.prompt("Tekan Enter untuk kembali ke menu utama...");
   }
 
-  // Template menu lain
-  async addLiquidityMenu() { this.printHeader(); this.log("Fitur Add Liquidity siap dikembangkan!", "info"); await this.prompt("Tekan Enter untuk kembali ke menu utama..."); }
-  async removeLiquidityMenu() { this.printHeader(); this.log("Fitur Remove Liquidity siap dikembangkan!", "info"); await this.prompt("Tekan Enter untuk kembali ke menu utama..."); }
-  async stakeR2usdMenu() { this.printHeader(); this.log("Fitur Stake R2USD siap dikembangkan!", "info"); await this.prompt("Tekan Enter untuk kembali ke menu utama..."); }
-  async unstakeSr2usdMenu() { this.printHeader(); this.log("Fitur Unstake sR2USD siap dikembangkan!", "info"); await this.prompt("Tekan Enter untuk kembali ke menu utama..."); }
-  async depositBtcMenu() { this.printHeader(); this.log("Fitur Deposit BTC siap dikembangkan!", "info"); await this.prompt("Tekan Enter untuk kembali ke menu utama..."); }
-  async runAllFeatures() { this.printHeader(); this.log("Fitur Run All Features siap dikembangkan!", "info"); await this.prompt("Tekan Enter untuk kembali ke menu utama..."); }
+  // ==================== ADD LIQUIDITY ====================
+  async addLiquidityMenu() {
+    this.printHeader();
+    this.log("Fitur Add Liquidity siap dikembangkan!", "info");
+    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
+  }
+
+  // ==================== REMOVE LIQUIDITY ====================
+  async removeLiquidityMenu() {
+    this.printHeader();
+    this.log("Fitur Remove Liquidity siap dikembangkan!", "info");
+    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
+  }
+
+  // ==================== STAKE R2USD ====================
+  async stakeR2usdMenu() {
+    this.printHeader();
+    this.log("Fitur Stake R2USD siap dikembangkan!", "info");
+    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
+  }
+
+  // ==================== UNSTAKE sR2USD ====================
+  async unstakeSr2usdMenu() {
+    this.printHeader();
+    this.log("Fitur Unstake sR2USD siap dikembangkan!", "info");
+    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
+  }
+
+  // ==================== DEPOSIT BTC ====================
+  async depositBtcMenu() {
+    this.printHeader();
+    this.log("Fitur Deposit BTC siap dikembangkan!", "info");
+    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
+  }
+
+  // ==================== RUN ALL FEATURES ====================
+  async runAllFeatures() {
+    this.printHeader();
+    this.log("Fitur Run All Features siap dikembangkan!", "info");
+    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
+  }
 }
 
 async function main() {
