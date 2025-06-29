@@ -38,7 +38,8 @@ class AllFeatureBot {
       r2usd: "0xYourR2UsdContractAddress",
       r2: "0xYourR2ContractAddress",
       staking: "0xYourStakingContractAddress",
-      btcBridge: "0xYourBtcBridgeContractAddress"
+      btcBridge: "0xYourBtcBridgeContractAddress",
+      swapRouter: "0xYourSwapRouterAddress"
     };
     
     // Contract ABIs (simplified examples)
@@ -66,12 +67,13 @@ class AllFeatureBot {
     console.log(chalk.bold.cyan("═══════════════════════════════════════════════════"));
     console.log(chalk.bold.cyan("               R2 CLI BOT INTERFACE"));
     console.log(chalk.cyan("───────────────────────────────────────────────────"));
-    if (this.wallet)
+    if (this.wallet) {
       console.log(
         chalk.gray(
           `Address: ${this.wallet.address.slice(0, 6)}...${this.wallet.address.slice(-4)}`
         )
       );
+    }
     console.log(chalk.bold.cyan("═══════════════════════════════════════════════════\n"));
   }
 
@@ -90,7 +92,7 @@ class AllFeatureBot {
           const valid = validator(answer.trim());
           if (valid === true) return resolve(answer.trim());
           this.log(valid, "error");
-          return resolve(this.prompt(question, validator));
+          return this.prompt(question, validator).then(resolve);
         }
         resolve(answer.trim());
       });
@@ -114,8 +116,9 @@ class AllFeatureBot {
         )
       );
       const choice = await this.prompt("> Choose [1-9]: ", (ans) => {
-        if (["1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(ans))
+        if (["1", "2", "3", "4", "5", "6", "7", "8", "9"].includes(ans)) {
           return true;
+        }
         return "Pilihan tidak valid!";
       });
 
@@ -215,8 +218,6 @@ class AllFeatureBot {
     await this.prompt("Tekan Enter untuk kembali ke menu utama...");
   }
 
-  // ... (keep existing swapUsdcR2usdMenu, swapR2UsdcMenu, etc. functions, but modify them to do real transactions)
-
   async swapUsdcR2usdMenu() {
     this.printHeader();
     console.log(chalk.white("Swap USDC <> R2USD"));
@@ -308,7 +309,7 @@ class AllFeatureBot {
     await this.prompt("Tekan Enter untuk kembali ke menu utama...");
   }
 
-  // Similarly modify other functions (swapR2UsdcMenu, addLiquidityMenu, etc.) to do real transactions
+  // Add other menu functions here with similar error handling
   // ...
 
   async runAllFeatures() {
