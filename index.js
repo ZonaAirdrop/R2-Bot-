@@ -434,36 +434,36 @@ async function executeDepositBTC(amount, times, minDelay, maxDelay) {
 // UI Functions
 function showMainMenu() {
   menuBox.setItems([
-    "1. Swap USDC <> R2USD",
-    "2. Swap R2 <> USDC",
-    "3. Swap BTC <> R2BTC",
-    "4. Add Liquidity",
-    "5. Remove Liquidity",
-    "6. Stake R2USD",
-    "7. Unstake sR2USD",
-    "8. Deposit BTC",
-    "9. Transaction History",
-    "10. Clear Logs",
-    "11. Refresh",
-    "12. Exit"
-  ]);
+  "1. Otomatis Bot",
+  "2. Swap USDC <> R2USD",
+  "3. Swap R2 <> USDC",
+  "4. Add Liquidity",
+  "5. Remove Liquidity",
+  "6. Stake R2USD",
+  "7. Unstake sR2USD",
+  "8. Deposit BTC",
+  "9. Transaction History",
+  "10. Clear Logs",
+  "11. Refresh",
+  "12. Exit"
+]);
   menuBox.focus();
   menuBox.on('select', (item, index) => {
     switch (index) {
-      case 0: showSwapMenu("USDC", "R2USD"); break;
-      case 1: showSwapMenu("R2", "USDC"); break;
-      case 2: showSwapMenu("BTC", "R2BTC"); break;
-      case 3: showLiquidityMenu("add"); break;
-      case 4: showLiquidityMenu("remove"); break;
-      case 5: showStakingMenu("stake"); break;
-      case 6: showStakingMenu("unstake"); break;
-      case 7: showDepositBTCMenu(); break;
-      case 8: showTransactionHistory(); break;
-      case 9: logBox.setContent(""); screen.render(); break;
-      case 10: updateWalletData(); break;
-      case 11: process.exit(0);
-    }
-  });
+      case 0: showAutoBotForm(); break;
+    case 1: showSwapMenu("USDC", "R2USD"); break;
+    case 2: showSwapMenu("R2", "USDC"); break;
+    case 3: showLiquidityMenu("add"); break;
+    case 4: showLiquidityMenu("remove"); break;
+    case 5: showStakingMenu("stake"); break;
+    case 6: showStakingMenu("unstake"); break;
+    case 7: showDepositBTCMenu(); break;
+    case 8: showTransactionHistory(); break;
+    case 9: logBox.setContent(""); screen.render(); break;
+    case 10: updateWalletData(); break;
+    case 11: process.exit(0);
+  }
+});
   screen.render();
 }
 
