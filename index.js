@@ -32,7 +32,6 @@ class AllFeatureBot {
     });
     this.state = {};
 
-    // Contract addresses (replace with your actual contract addresses)
     this.contracts = {
       usdc: "0xc7BcCf452965Def7d5D9bF02943e3348F758D3CB",
       btc: "0x0f3B4ae3f2b63B21b12e423444d065CC82e3DfA5",
@@ -46,12 +45,13 @@ class AllFeatureBot {
       lpUsdcR2usd: "0xee567fe1712faf6149d80da1e6934e354124cfe3",
       lpR2R2usd: "0xee567fe1712faf6149d80da1e6934e354124cfe3",
     };
-    // Contract ABIs (simplified examples)
+
     this.abis = {
       erc20: [
         "function approve(address spender, uint256 amount) returns (bool)",
         "function transfer(address recipient, uint256 amount) returns (bool)",
         "function balanceOf(address account) view returns (uint256)",
+        "function allowance(address owner, address spender) view returns (uint256)",
         "function decimals() view returns (uint8)"
       ],
       staking: [
@@ -69,9 +69,9 @@ class AllFeatureBot {
 
   printHeader() {
     console.clear();
-    console.log(chalk.bold.cyan("═══════════════════════════════════════════════════"));
-    console.log(chalk.bold.cyan("               R2 CLI BOT INTERFACE"));
-    console.log(chalk.cyan("───────────────────────────────────────────────────"));
+    console.log(chalk.bold.cyan("═══════════════════════════════════════════════════════════════════════════════"));
+    console.log(chalk.bold.cyan("                              R2 CLI BOT INTERFACE"));
+    console.log(chalk.cyan("───────────────────────────────────────────────────────────────────────────────"));
     if (this.wallet) {
       console.log(
         chalk.gray(
@@ -79,7 +79,7 @@ class AllFeatureBot {
         )
       );
     }
-    console.log(chalk.bold.cyan("═══════════════════════════════════════════════════\n"));
+    console.log(chalk.bold.cyan("═══════════════════════════════════════════════════════════════════════════════\n"));
   }
 
   log(msg, type = "info") {
@@ -109,15 +109,17 @@ class AllFeatureBot {
       this.printHeader();
       console.log(
         chalk.white(
-          "1. Swap USDC <> R2USD\n" +
-          "2. Swap R2 <> USDC\n" +
-          "3. Add Liquidity\n" +
-          "4. Remove Liquidity\n" +
-          "5. Stake R2USD\n" +
-          "6. Unstake sR2USD\n" +
-          "7. Deposit BTC\n" +
-          "8. Run All Features\n" +
-          "9. Exit\n"
+          [
+            "1. Swap USDC <> R2USD",
+            "2. Swap R2 <> USDC",
+            "3. Add Liquidity",
+            "4. Remove Liquidity",
+            "5. Stake R2USD",
+            "6. Unstake sR2USD",
+            "7. Deposit BTC",
+            "8. Run All Features",
+            "9. Exit\n"
+          ].join("\n")
         )
       );
       const choice = await this.prompt("> Choose [1-9]: ", (ans) => {
@@ -151,76 +153,7 @@ class AllFeatureBot {
     }
   }
 
-  async depositBtcMenu() {
-    this.printHeader();
-    console.log(chalk.white("Deposit BTC"));
-
-    const btcAddress = await this.prompt(
-      "Masukkan alamat BTC tujuan: ",
-      (v) => v.trim().length > 0 ? true : "Alamat BTC tidak boleh kosong"
-    );
-
-    const amount = await this.prompt(
-      "Masukkan jumlah BTC yang akan di deposit: ",
-      (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-    );
-
-    const count = Number(
-      await this.prompt(
-        "Berapa kali ingin melakukan deposit? ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
-
-    const minDelay = Number(
-      await this.prompt(
-        "Min Delay (detik) antar transaksi? ",
-        (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
-      )
-    );
-
-    const maxDelay = Number(
-      await this.prompt(
-        "Max Delay (detik) antar transaksi? ",
-        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
-      )
-    );
-
-    try {
-      const btcBridgeContract = new ethers.Contract(
-        this.contracts.btcBridge,
-        this.abis.btcBridge,
-        this.wallet
-      );
-
-      for (let i = 1; i <= count; i++) {
-        this.log(`Mempersiapkan deposit BTC ke ${btcAddress} sebesar ${amount} BTC (${i}/${count})`, "info");
-
-        // amount dari user (string) jadi parseUnits pakai 8 decimals
-        const amountInWei = ethers.parseUnits(amount, 8);
-
-        const tx = await btcBridgeContract.depositBTC(
-          btcAddress,
-          amountInWei,
-          { value: amountInWei } // Adjust if your contract requires different value
-        );
-
-        const receipt = await tx.wait();
-        this.log(`Deposit BTC berhasil! TX Hash: ${receipt.hash}`, "success");
-
-        if (i < count) {
-          const delay = randomDelay(minDelay, maxDelay);
-          this.log(`Menunggu ${delay} detik sebelum transaksi berikutnya...`, "info");
-          await new Promise(res => setTimeout(res, delay * 1000));
-        }
-      }
-    } catch (error) {
-      this.log(`Error saat deposit BTC: ${error.message}`, "error");
-    }
-
-    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
-  }
-
+  // ==================== SWAP USDC <> R2USD ====================
   async swapUsdcR2usdMenu() {
     this.printHeader();
     console.log(chalk.white("Swap USDC <> R2USD"));
@@ -257,40 +190,49 @@ class AllFeatureBot {
       const r2usdContract = new ethers.Contract(this.contracts.r2usd, this.abis.erc20, this.wallet);
       const swapRouterContract = new ethers.Contract(this.contracts.swapRouter, this.abis.swap, this.wallet);
 
-      // Ambil decimals langsung dari contract untuk dipastikan benar
       const usdcDecimals = await usdcContract.decimals();
       const r2usdDecimals = await r2usdContract.decimals();
 
-      // Pilih decimals sesuai arah swap
-      const amountInWei =
-        direction === "1"
-          ? ethers.parseUnits(amount, usdcDecimals)
-          : ethers.parseUnits(amount, r2usdDecimals);
+      let tokenIn, decimalsIn, path, allowance, balance;
+      if (direction === "1") {
+        tokenIn = usdcContract;
+        decimalsIn = usdcDecimals;
+        path = [this.contracts.usdc, this.contracts.r2usd];
+      } else {
+        tokenIn = r2usdContract;
+        decimalsIn = r2usdDecimals;
+        path = [this.contracts.r2usd, this.contracts.usdc];
+      }
+      const amountInWei = ethers.parseUnits(amount, decimalsIn);
+      allowance = await tokenIn.allowance(this.wallet.address, this.contracts.swapRouter);
+      balance = await tokenIn.balanceOf(this.wallet.address);
+
+      // Debug info
+      this.log(`Decimals tokenIn: ${decimalsIn}`, "info");
+      this.log(`Saldo tokenIn: ${ethers.formatUnits(balance, decimalsIn)}`, "info");
+      this.log(`Allowance ke router: ${ethers.formatUnits(allowance, decimalsIn)}`, "info");
+      this.log(`Amount swap: ${ethers.formatUnits(amountInWei, decimalsIn)}`, "info");
+      this.log(`Path swap: [${path.join(", ")}]`, "info");
+
+      if (balance.lt(amountInWei)) {
+        this.log(`Saldo tidak cukup untuk swap (${ethers.formatUnits(balance, decimalsIn)} < ${amount})`, "error");
+        await this.prompt("Tekan Enter untuk kembali ke menu utama...");
+        return;
+      }
+
+      if (allowance.lt(amountInWei)) {
+        this.log("Allowance kurang. Mengirim approve...", "info");
+        const approveTx = await tokenIn.approve(this.contracts.swapRouter, amountInWei);
+        await approveTx.wait();
+        this.log(`Approve berhasil: ${approveTx.hash}`, "success");
+      } else {
+        this.log("Allowance cukup, tidak perlu approve ulang.", "info");
+      }
 
       for (let i = 1; i <= count; i++) {
-        if (direction === "1") {
-          // USDC → R2USD
-          const approveTx = await usdcContract.approve(this.contracts.swapRouter, amountInWei);
-          await approveTx.wait();
-
-          const path = [this.contracts.usdc, this.contracts.r2usd];
+        try {
           const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-          const swapTx = await swapRouterContract.swapExactTokensForTokens(
-            amountInWei,
-            0, // amountOutMin - set proper slippage tolerance
-            path,
-            this.wallet.address,
-            deadline
-          );
-          const receipt = await swapTx.wait();
-          this.log(`Swap USDC → R2USD berhasil! TX Hash: ${receipt.hash}`, "success");
-        } else {
-          // R2USD → USDC
-          const approveTx = await r2usdContract.approve(this.contracts.swapRouter, amountInWei);
-          await approveTx.wait();
-
-          const path = [this.contracts.r2usd, this.contracts.usdc];
-          const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+          this.log(`Proses swap ke-${i}...`, "info");
           const swapTx = await swapRouterContract.swapExactTokensForTokens(
             amountInWei,
             0,
@@ -299,9 +241,19 @@ class AllFeatureBot {
             deadline
           );
           const receipt = await swapTx.wait();
-          this.log(`Swap R2USD → USDC berhasil! TX Hash: ${receipt.hash}`, "success");
+          this.log(
+            `Swap berhasil! TX Hash: ${receipt.hash}`,
+            "success"
+          );
+        } catch (swapError) {
+          this.log(
+            `Error saat swap [${i}]: ${swapError.shortMessage || swapError.reason || swapError.message}`,
+            "error"
+          );
+          if (swapError.data) {
+            this.log(`Revert data: ${swapError.data}`, "error");
+          }
         }
-
         if (i < count) {
           const delay = randomDelay(minDelay, maxDelay);
           this.log(`Menunggu ${delay} detik sebelum transaksi berikutnya...`, "info");
@@ -309,81 +261,59 @@ class AllFeatureBot {
         }
       }
     } catch (error) {
-      this.log(`Error saat swap: ${error.message}`, "error");
+      this.log(`Error fatal: ${error.shortMessage || error.reason || error.message}`, "error");
+      if (error.data) this.log(`Revert data: ${error.data}`, "error");
     }
 
     await this.prompt("Tekan Enter untuk kembali ke menu utama...");
   }
 
-  // Add other menu functions here with similar error handling
-  // ...
+  // ==================== SWAP R2 <> USDC (TEMPLATE) ====================
+  async swapR2UsdcMenu() {
+    this.printHeader();
+    this.log("Fitur swap R2 <> USDC siap dikembangkan, silakan copy dari swapUsdcR2usdMenu!", "info");
+    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
+  }
 
+  // ==================== ADD LIQUIDITY (TEMPLATE) ====================
+  async addLiquidityMenu() {
+    this.printHeader();
+    this.log("Fitur Add Liquidity siap dikembangkan!", "info");
+    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
+  }
+
+  // ==================== REMOVE LIQUIDITY (TEMPLATE) ====================
+  async removeLiquidityMenu() {
+    this.printHeader();
+    this.log("Fitur Remove Liquidity siap dikembangkan!", "info");
+    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
+  }
+
+  // ==================== STAKE R2USD (TEMPLATE) ====================
+  async stakeR2usdMenu() {
+    this.printHeader();
+    this.log("Fitur Stake R2USD siap dikembangkan!", "info");
+    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
+  }
+
+  // ==================== UNSTAKE sR2USD (TEMPLATE) ====================
+  async unstakeSr2usdMenu() {
+    this.printHeader();
+    this.log("Fitur Unstake sR2USD siap dikembangkan!", "info");
+    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
+  }
+
+  // ==================== DEPOSIT BTC (TEMPLATE) ====================
+  async depositBtcMenu() {
+    this.printHeader();
+    this.log("Fitur Deposit BTC siap dikembangkan!", "info");
+    await this.prompt("Tekan Enter untuk kembali ke menu utama...");
+  }
+
+  // ==================== RUN ALL FEATURES (TEMPLATE) ====================
   async runAllFeatures() {
     this.printHeader();
-    console.log(chalk.white("Run All Features"));
-
-    // Get parameters for all features including BTC deposit
-    const swapUsdcR2usdCount = Number(
-      await this.prompt(
-        "Berapa kali ingin melakukan transaksi swap USDC <> R2USD? ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
-    // ... (other prompts)
-    const depositBtcCount = Number(
-      await this.prompt(
-        "Berapa kali ingin melakukan deposit BTC? ",
-        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-      )
-    );
-    const btcAddress = await this.prompt(
-      "Masukkan alamat BTC tujuan: ",
-      (v) => v.trim().length > 0 ? true : "Alamat BTC tidak boleh kosong"
-    );
-    const btcAmount = await this.prompt(
-      "Masukkan jumlah BTC yang akan di deposit: ",
-      (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
-    );
-    // ... (rest of the prompts)
-
-    // Run all features including BTC deposit
-    let txCounter = 1;
-
-    // ... (existing feature executions)
-
-    // BTC Deposit
-    if (depositBtcCount > 0) {
-      try {
-        const btcBridgeContract = new ethers.Contract(
-          this.contracts.btcBridge,
-          this.abis.btcBridge,
-          this.wallet
-        );
-
-        for (let i = 1; i <= depositBtcCount; i++) {
-          const amountInWei = ethers.parseUnits(btcAmount, 8);
-
-          const tx = await btcBridgeContract.depositBTC(
-            btcAddress,
-            amountInWei,
-            { value: amountInWei }
-          );
-
-          const receipt = await tx.wait();
-          this.log(`TX ${txCounter++} (Deposit BTC ${i}/${depositBtcCount}) Berhasil! TX Hash: ${receipt.hash}`, "success");
-
-          if (i < depositBtcCount) {
-            const delay = randomDelay(minDelay, maxDelay);
-            this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
-            await new Promise(res => setTimeout(res, delay * 1000));
-          }
-        }
-      } catch (error) {
-        this.log(`Error saat deposit BTC: ${error.message}`, "error");
-      }
-    }
-
-    this.log("Semua fitur telah dijalankan!", "success");
+    this.log("Fitur Run All Features siap dikembangkan!", "info");
     await this.prompt("Tekan Enter untuk kembali ke menu utama...");
   }
 }
