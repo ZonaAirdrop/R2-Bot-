@@ -2,52 +2,86 @@ import "dotenv/config";
 import blessed from "blessed";
 import { ethers } from "ethers";
 
-// ====== CONFIG & STATE ======
-const RPC_URL = process.env.RPC_URL || "https://sepolia.infura.io/v3/ef659d824bd14ae798d965f855f2cfd6";
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
+// ====== DATA KONTRAK & TOKEN ======
+const ADDRESSES = {
+  USDC: "0xc7BcCf452965Def7d5D9bF02943e3348F758D3CB",
+  R2USD: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",
+  sR2USD: "0x006CbF409CA275bA022111dB32BDAE054a97d488",
+  R2: "0xb816bB88f836EA75Ca4071B46FF285f690C43bb7",
+  BTC: "0x0f3B4ae3f2b63B21b12e423444d065CC82e3DfA5",
+  SWAP_ROUTER: "0x47d1B0623bB3E557bF8544C159c9ae51D091F8a2",
+  BTC_SWAP_ROUTER: "0x23b2615d783e16f14b62efa125306c7c69b4941a",
+  STAKING_CONTRACT: "0x006cbf409ca275ba022111db32bdae054a97d488",
+  LP_R2USD_sR2USD: "0xee567fe1712faf6149d80da1e6934e354124cfe3",
+  LP_USDC_R2USD: "0xee567fe1712faf6149d80da1e6934e354124cfe3",
+  LP_R2_R2USD: "0xee567fe1712faf6149d80da1e6934e354124cfe3"
+};
 
-if (!PRIVATE_KEY) {
-  console.error("🛑 CRITICAL: Missing PRIVATE_KEY in .env");
+// ====== ABI (MINIMAL, BISA DITAMBAH) ======
+const ERC20_ABI = [
+  "function balanceOf(address owner) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)"
+];
+const ROUTER_ABI = [
+  "function swapExactTokensForTokens(uint256,uint256,address[],address,uint256) returns (uint256[])",
+  "function addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256) returns (uint256,uint256,uint256)"
+  // Tambahkan ABI lain jika ada fitur lain
+];
+
+// ====== INIT ETHERS ======
+const RPC_URL = process.env.RPC_URL;
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
+if (!RPC_URL || !PRIVATE_KEY) {
+  console.error("Silakan isi .env dengan RPC_URL dan PRIVATE_KEY");
   process.exit(1);
 }
-
 const provider = new ethers.JsonRpcProvider(RPC_URL);
 const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 
-const CONFIG = {
-  RPC_URL: RPC_URL,
-  NETWORK_NAME: "Sepolia Testnet"
-};
+// ====== CONTRACT INSTANCE ======
+const usdc = new ethers.Contract(ADDRESSES.USDC, ERC20_ABI, wallet);
+const r2usd = new ethers.Contract(ADDRESSES.R2USD, ERC20_ABI, wallet);
+const router = new ethers.Contract(ADDRESSES.SWAP_ROUTER, ROUTER_ABI, wallet);
 
+// ====== STATE ======
 let walletInfo = {
-  balances: {
-    native: "0",
-    USDC: "0",
-    BTC: "0",
-    R2USD: "0",
-    sR2USD: "0",
-    R2: "0",
-    LP_R2USD_sR2USD: "0",
-    LP_USDC_R2USD: "0",
-    LP_R2_R2USD: "0"
-  },
+  balances: { native: "0", USDC: "0", R2USD: "0" },
   status: "Ready"
 };
+let operationsHistory = [];
+let screen, walletBox, logBox, menuBox, promptBox;
 
-let operationsHistory = [
-  { type: "Add Liquidity", amount: "100", blockNumber: "123456", txHash: "0xabc123" },
-  { type: "Swap", amount: "10", blockNumber: "123457", txHash: "0xdef456" },
-];
-let screen, walletBox, logBox, menuBox;
-
-// ========== HELPER & PROMPT ==========
+// ====== HELPER ======
 function addLog(message, type = "info") {
   const colors = { info: "white", error: "red", success: "green", debug: "yellow" };
   const timestamp = new Date().toLocaleString();
   logBox.add(`[${timestamp}] | {${colors[type]}-fg}${message}{/${colors[type]}-fg}`);
   screen.render();
 }
-
+function formatEth(wei) {
+  return ethers.formatEther(wei);
+}
+function formatToken(amount, decimals) {
+  return Number(amount) / 10 ** decimals;
+}
+async function fetchBalance(tokenAddress, decimals) {
+  const contract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+  const raw = await contract.balanceOf(wallet.address);
+  return formatToken(raw, decimals);
+}
+async function updateWalletData() {
+  // ETH
+  const native = await provider.getBalance(wallet.address);
+  walletInfo.balances.native = formatEth(native);
+  // ERC20
+  const usdcDec = await usdc.decimals();
+  const r2usdDec = await r2usd.decimals();
+  walletInfo.balances.USDC = await fetchBalance(ADDRESSES.USDC, usdcDec);
+  walletInfo.balances.R2USD = await fetchBalance(ADDRESSES.R2USD, r2usdDec);
+  updateWalletDisplay();
+}
 function updateWalletDisplay() {
   const addr = wallet.address;
   const shortAddress = addr ? `${addr.slice(0, 6)}...${addr.slice(-4)}` : "N/A";
@@ -55,31 +89,116 @@ function updateWalletDisplay() {
 │   ├── ETH           : {bright-green-fg}${walletInfo.balances.native}{/bright-green-fg}
 │   ├── USDC          : {bright-green-fg}${walletInfo.balances.USDC}{/bright-green-fg}
 │   ├── R2USD         : {bright-green-fg}${walletInfo.balances.R2USD}{/bright-green-fg}
-│   ├── sR2USD        : {bright-green-fg}${walletInfo.balances.sR2USD}{/bright-green-fg}
-│   ├── R2            : {bright-green-fg}${walletInfo.balances.R2}{/bright-green-fg}
-│   ├── LP R2USD-sR2USD : {bright-green-fg}${walletInfo.balances.LP_R2USD_sR2USD}{/bright-green-fg}
-│   ├── LP USDC-R2USD : {bright-green-fg}${walletInfo.balances.LP_USDC_R2USD}{/bright-green-fg}
-│   ├── LP R2-R2USD   : {bright-green-fg}${walletInfo.balances.LP_R2_R2USD}{/bright-green-fg}
-│   └── BTC           : {bright-green-fg}${walletInfo.balances.BTC}{/bright-green-fg}
-└── Network        : {bright-cyan-fg}${CONFIG.NETWORK_NAME}{/bright-cyan-fg}`;
+└── Network        : {bright-cyan-fg}Sepolia{/bright-cyan-fg}`;
   walletBox.setContent(content);
   screen.render();
 }
 
-async function updateWalletData() {
-  walletInfo.balances.native = "1.2345";
-  walletInfo.balances.USDC = "1000";
-  walletInfo.balances.BTC = "0.005";
-  walletInfo.balances.R2USD = "500";
-  walletInfo.balances.sR2USD = "200";
-  walletInfo.balances.R2 = "300";
-  walletInfo.balances.LP_R2USD_sR2USD = "0";
-  walletInfo.balances.LP_USDC_R2USD = "0";
-  walletInfo.balances.LP_R2_R2USD = "0";
-  updateWalletDisplay();
+async function checkAndApprove(tokenContract, spender, amount) {
+  const allowance = await tokenContract.allowance(wallet.address, spender);
+  if (BigInt(allowance) < BigInt(amount)) {
+    const tx = await tokenContract.approve(spender, amount);
+    await tx.wait();
+    addLog(`Approve sukses: ${tx.hash}`, "success");
+  }
 }
 
-// ========== PROMPT BOX ==========
+// ====== TRANSAKSI UTAMA ======
+async function swapUsdcToR2usd(amount, times, done) {
+  const decimals = await usdc.decimals();
+  const amountIn = ethers.parseUnits(amount.toString(), decimals);
+  await checkAndApprove(usdc, ADDRESSES.SWAP_ROUTER, amountIn * BigInt(times));
+  for (let i = 0; i < times; i++) {
+    try {
+      const path = [ADDRESSES.USDC, ADDRESSES.R2USD];
+      const deadline = Math.floor(Date.now() / 1000) + 1800;
+      const tx = await router.swapExactTokensForTokens(
+        amountIn,
+        0,
+        path,
+        wallet.address,
+        deadline
+      );
+      addLog(`Swap ke-${i + 1} tx: ${tx.hash}`);
+      const receipt = await tx.wait();
+      operationsHistory.push({
+        type: "Swap USDC->R2USD",
+        amount,
+        blockNumber: receipt.blockNumber.toString(),
+        txHash: tx.hash
+      });
+    } catch (e) {
+      addLog(`Gagal swap ke-${i + 1}: ${e.message}`, "error");
+    }
+  }
+  await updateWalletData();
+  done();
+}
+async function swapR2usdToUsdc(amount, times, done) {
+  const decimals = await r2usd.decimals();
+  const amountIn = ethers.parseUnits(amount.toString(), decimals);
+  await checkAndApprove(r2usd, ADDRESSES.SWAP_ROUTER, amountIn * BigInt(times));
+  for (let i = 0; i < times; i++) {
+    try {
+      const path = [ADDRESSES.R2USD, ADDRESSES.USDC];
+      const deadline = Math.floor(Date.now() / 1000) + 1800;
+      const tx = await router.swapExactTokensForTokens(
+        amountIn,
+        0,
+        path,
+        wallet.address,
+        deadline
+      );
+      addLog(`Swap ke-${i + 1} tx: ${tx.hash}`);
+      const receipt = await tx.wait();
+      operationsHistory.push({
+        type: "Swap R2USD->USDC",
+        amount,
+        blockNumber: receipt.blockNumber.toString(),
+        txHash: tx.hash
+      });
+    } catch (e) {
+      addLog(`Gagal swap ke-${i + 1}: ${e.message}`, "error");
+    }
+  }
+  await updateWalletData();
+  done();
+}
+async function addUsdcR2usdLiquidity(amountUsdc, amountR2usd, done) {
+  const usdcDec = await usdc.decimals();
+  const r2usdDec = await r2usd.decimals();
+  const amountADesired = ethers.parseUnits(amountUsdc.toString(), usdcDec);
+  const amountBDesired = ethers.parseUnits(amountR2usd.toString(), r2usdDec);
+  await checkAndApprove(usdc, ADDRESSES.SWAP_ROUTER, amountADesired);
+  await checkAndApprove(r2usd, ADDRESSES.SWAP_ROUTER, amountBDesired);
+  try {
+    const deadline = Math.floor(Date.now() / 1000) + 1800;
+    const tx = await router.addLiquidity(
+      ADDRESSES.USDC,
+      ADDRESSES.R2USD,
+      amountADesired,
+      amountBDesired,
+      0,
+      0,
+      wallet.address,
+      deadline
+    );
+    addLog(`Add Liquidity tx: ${tx.hash}`);
+    const receipt = await tx.wait();
+    operationsHistory.push({
+      type: "AddLiquidity USDC-R2USD",
+      amount: `${amountUsdc}|${amountR2usd}`,
+      blockNumber: receipt.blockNumber.toString(),
+      txHash: tx.hash
+    });
+  } catch (e) {
+    addLog(`Gagal add liquidity: ${e.message}`, "error");
+  }
+  await updateWalletData();
+  done();
+}
+
+// ====== UI BLESSED ======
 function createPromptBox() {
   const prompt = blessed.prompt({
     parent: screen,
@@ -97,9 +216,6 @@ function createPromptBox() {
   screen.append(prompt);
   return prompt;
 }
-let promptBox;
-
-// ========== GENERIC PROMPT WITH CALLBACK ==========
 function promptStep(labels, callback) {
   let answers = [];
   function ask(i) {
@@ -109,10 +225,11 @@ function promptStep(labels, callback) {
       callback(answers);
       return;
     }
+    let label = labels[i];
     promptBox.show();
     promptBox.focus();
     screen.render();
-    promptBox.input(labels[i], '', (err, value) => {
+    promptBox.input(label, '', (err, value) => {
       promptBox.hide();
       screen.render();
       if (err || !value || isNaN(Number(value)) || Number(value) <= 0) {
@@ -126,124 +243,6 @@ function promptStep(labels, callback) {
   }
   ask(0);
 }
-
-// ========== ACTIONS ==========
-function swapUsdcToR2usd(done) {
-  promptStep(
-    ['Masukkan jumlah USDC yang ingin di-swap ke R2USD:', 'Berapa kali swap?'],
-    ([amount, times]) => {
-      addLog(`Swap USDC ke R2USD sejumlah ${amount} sebanyak ${times} kali (dummy action)...`, "info");
-      done();
-    }
-  );
-}
-function swapR2usdToUsdc(done) {
-  promptStep(
-    ['Masukkan jumlah R2USD yang ingin di-swap ke USDC:', 'Berapa kali swap?'],
-    ([amount, times]) => {
-      addLog(`Swap R2USD ke USDC sejumlah ${amount} sebanyak ${times} kali (dummy action)...`, "info");
-      done();
-    }
-  );
-}
-function swapR2ToUsdc(done) {
-  promptStep(
-    ['Masukkan jumlah R2 yang ingin di-swap ke USDC:', 'Berapa kali swap?'],
-    ([amount, times]) => {
-      addLog(`Swap R2 ke USDC sejumlah ${amount} sebanyak ${times} kali (dummy action)...`, "info");
-      done();
-    }
-  );
-}
-function swapUsdcToR2(done) {
-  promptStep(
-    ['Masukkan jumlah USDC yang ingin di-swap ke R2:', 'Berapa kali swap?'],
-    ([amount, times]) => {
-      addLog(`Swap USDC ke R2 sejumlah ${amount} sebanyak ${times} kali (dummy action)...`, "info");
-      done();
-    }
-  );
-}
-function addR2UsdcLiquidity(done) {
-  promptStep(
-    ['Masukkan jumlah R2:', 'Masukkan jumlah USDC:'],
-    ([amountR2, amountUsdc]) => {
-      addLog(`Add Liquidity R2-USDC: R2 ${amountR2} + USDC ${amountUsdc} (dummy action)...`, "info");
-      done();
-    }
-  );
-}
-function addR2R2usdLiquidity(done) {
-  promptStep(
-    ['Masukkan jumlah R2:', 'Masukkan jumlah R2USD:'],
-    ([amountR2, amountR2usd]) => {
-      addLog(`Add Liquidity R2-R2USD: R2 ${amountR2} + R2USD ${amountR2usd} (dummy action)...`, "info");
-      done();
-    }
-  );
-}
-function addUsdcR2usdLiquidity(done) {
-  promptStep(
-    ['Masukkan jumlah USDC:', 'Masukkan jumlah R2USD:'],
-    ([amountUsdc, amountR2usd]) => {
-      addLog(`Add Liquidity USDC-R2USD: USDC ${amountUsdc} + R2USD ${amountR2usd} (dummy action)...`, "info");
-      done();
-    }
-  );
-}
-function addR2usdSR2usdLiquidity(done) {
-  promptStep(
-    ['Masukkan jumlah R2USD:', 'Masukkan jumlah sR2USD:'],
-    ([amountR2usd, amountSR2usd]) => {
-      addLog(`Add Liquidity R2USD-sR2USD: R2USD ${amountR2usd} + sR2USD ${amountSR2usd} (dummy action)...`, "info");
-      done();
-    }
-  );
-}
-function removeR2UsdcLiquidity(done) {
-  promptStep(['Masukkan jumlah LP R2-USDC yang ingin di-remove:'], ([amount]) => {
-    addLog(`Remove Liquidity R2-USDC: LP ${amount} (dummy action)...`, "info");
-    done();
-  });
-}
-function removeR2R2usdLiquidity(done) {
-  promptStep(['Masukkan jumlah LP R2-R2USD yang ingin di-remove:'], ([amount]) => {
-    addLog(`Remove Liquidity R2-R2USD: LP ${amount} (dummy action)...`, "info");
-    done();
-  });
-}
-function removeUsdcR2usdLiquidity(done) {
-  promptStep(['Masukkan jumlah LP USDC-R2USD yang ingin di-remove:'], ([amount]) => {
-    addLog(`Remove Liquidity USDC-R2USD: LP ${amount} (dummy action)...`, "info");
-    done();
-  });
-}
-function removeR2usdSR2usdLiquidity(done) {
-  promptStep(['Masukkan jumlah LP R2USD-sR2USD yang ingin di-remove:'], ([amount]) => {
-    addLog(`Remove Liquidity R2USD-sR2USD: LP ${amount} (dummy action)...`, "info");
-    done();
-  });
-}
-function stakeR2usd(done) {
-  promptStep(['Masukkan jumlah R2USD yang ingin di-stake:'], ([amount]) => {
-    addLog(`Stake R2USD: ${amount} (dummy action)...`, "info");
-    done();
-  });
-}
-function unstakeSR2usd(done) {
-  promptStep(['Masukkan jumlah sR2USD yang ingin di-unstake:'], ([amount]) => {
-    addLog(`Unstake sR2USD: ${amount} (dummy action)...`, "info");
-    done();
-  });
-}
-function depositBtc(done) {
-  promptStep(['Masukkan jumlah BTC yang ingin di-deposit:'], ([amount]) => {
-    addLog(`Deposit BTC: ${amount} (dummy action)...`, "info");
-    done();
-  });
-}
-
-// ========== SUBMENUS ==========
 function showSimpleSubmenu(title, items, actions = {}) {
   const subMenu = blessed.list({
     parent: screen,
@@ -262,16 +261,13 @@ function showSimpleSubmenu(title, items, actions = {}) {
     },
     keys: true, mouse: true, vi: true
   });
-
   screen.append(subMenu);
   subMenu.focus();
   screen.render();
-
   subMenu.key(['escape', 'q', 'C-c'], () => {
     screen.remove(subMenu);
     showMainMenu();
   });
-
   subMenu.on('select', (item, idx) => {
     const itemText = item.getText ? item.getText() : item.content;
     if (idx === items.length - 1 || /back/i.test(itemText)) {
@@ -290,14 +286,6 @@ function showSimpleSubmenu(title, items, actions = {}) {
     }
   });
 }
-
-// ========== SUBMENU DEFINITIONS ==========
-function showOtomatisBotSubMenu() {
-  showSimpleSubmenu("Otomatis Bot", [
-    "Jalankan Bot Otomatis (Soon)",
-    "Back to Main Menu"
-  ]);
-}
 function showManualSwapUSDC_R2USD_SubMenu() {
   showSimpleSubmenu(
     "Swap USDC <> R2USD",
@@ -307,22 +295,8 @@ function showManualSwapUSDC_R2USD_SubMenu() {
       "Back to Main Menu"
     ],
     {
-      0: swapUsdcToR2usd,
-      1: swapR2usdToUsdc
-    }
-  );
-}
-function showManualSwapR2_USDC_SubMenu() {
-  showSimpleSubmenu(
-    "Swap R2 <> USDC",
-    [
-      "Swap R2 ke USDC",
-      "Swap USDC ke R2",
-      "Back to Main Menu"
-    ],
-    {
-      0: swapR2ToUsdc,
-      1: swapUsdcToR2
+      0: (done) => promptStep(['Jumlah USDC:', 'Berapa kali swap?'], ([amount, times]) => swapUsdcToR2usd(amount, times, done)),
+      1: (done) => promptStep(['Jumlah R2USD:', 'Berapa kali swap?'], ([amount, times]) => swapR2usdToUsdc(amount, times, done))
     }
   );
 }
@@ -330,76 +304,14 @@ function showAddLiquiditySubMenu() {
   showSimpleSubmenu(
     "Add Liquidity",
     [
-      "Add R2-USDC Liquidity",
-      "Add R2-R2USD Liquidity",
       "Add USDC-R2USD Liquidity",
-      "Add R2USD-sR2USD Liquidity",
       "Back to Main Menu"
     ],
     {
-      0: addR2UsdcLiquidity,
-      1: addR2R2usdLiquidity,
-      2: addUsdcR2usdLiquidity,
-      3: addR2usdSR2usdLiquidity
+      0: (done) => promptStep(['Jumlah USDC:', 'Jumlah R2USD:'], ([usdc, r2usd]) => addUsdcR2usdLiquidity(usdc, r2usd, done))
     }
   );
 }
-function showRemoveLiquiditySubMenu() {
-  showSimpleSubmenu(
-    "Remove Liquidity",
-    [
-      "Remove R2-USDC Liquidity",
-      "Remove R2-R2USD Liquidity",
-      "Remove USDC-R2USD Liquidity",
-      "Remove R2USD-sR2USD Liquidity",
-      "Back to Main Menu"
-    ],
-    {
-      0: removeR2UsdcLiquidity,
-      1: removeR2R2usdLiquidity,
-      2: removeUsdcR2usdLiquidity,
-      3: removeR2usdSR2usdLiquidity
-    }
-  );
-}
-function showStakeR2USDSubMenu() {
-  showSimpleSubmenu(
-    "Stake R2USD",
-    [
-      "Stake R2USD",
-      "Back to Main Menu"
-    ],
-    {
-      0: stakeR2usd
-    }
-  );
-}
-function showUnstakeSR2USDSubMenu() {
-  showSimpleSubmenu(
-    "Unstake sR2USD",
-    [
-      "Unstake sR2USD",
-      "Back to Main Menu"
-    ],
-    {
-      0: unstakeSR2usd
-    }
-  );
-}
-function showDepositBTCSubMenu() {
-  showSimpleSubmenu(
-    "Deposit BTC",
-    [
-      "Deposit BTC",
-      "Back to Main Menu"
-    ],
-    {
-      0: depositBtc
-    }
-  );
-}
-
-// ========== TRANSACTION HISTORY & CLEAR LOGS ==========
 function showTransactionHistoryBox() {
   const historyBox = blessed.box({
     parent: screen,
@@ -417,45 +329,27 @@ function showTransactionHistoryBox() {
     vi: true,
     scrollbar: { ch: ' ', style: { bg: 'cyan' } }
   });
-
   const content = operationsHistory.length
     ? operationsHistory.map((op, i) => `[${i+1}] | ${op.type} | Amount: ${op.amount || '-'} | Block: ${op.blockNumber || '-'} | Tx: ${op.txHash || '-'}`).join('\n')
     : "No transaction history.";
-
   historyBox.setContent(content + "\n\n{cyan-fg}ESC/q/Enter: Kembali ke menu utama{/cyan-fg}");
-
   screen.append(historyBox);
   historyBox.focus();
   screen.render();
-
   historyBox.key(['escape', 'q', 'C-c', 'enter'], () => {
     screen.remove(historyBox);
     showMainMenu();
   });
 }
 
-function clearLogsAndReturn() {
-  logBox.setContent("");
-  screen.render();
-  addLog("Log telah dibersihkan.", "success");
-  showMainMenu();
-}
-
-// ========== MAIN MENU ==========
+// ====== MAIN MENU ======
 function showMainMenu() {
   menuBox.setItems([
-    "1. Otomatis Bot",
-    "2. Swap USDC <> R2USD",
-    "3. Swap R2 <> USDC",
-    "4. Add Liquidity",
-    "5. Remove Liquidity",
-    "6. Stake R2USD",
-    "7. Unstake sR2USD",
-    "8. Deposit BTC",
-    "9. Transaction History",
-    "10. Clear Logs",
-    "11. Refresh",
-    "12. Exit"
+    "1. Swap USDC <> R2USD",
+    "2. Add Liquidity USDC-R2USD",
+    "3. Transaction History",
+    "4. Refresh Data",
+    "5. Exit"
   ]);
   menuBox.select(0);
   menuBox.focus();
@@ -463,32 +357,21 @@ function showMainMenu() {
   menuBox.key(['escape', 'q', 'C-c'], () => process.exit(0));
   menuBox.on('select', (item, index) => {
     switch (index) {
-      case 0: showOtomatisBotSubMenu(); break;
-      case 1: showManualSwapUSDC_R2USD_SubMenu(); break;
-      case 2: showManualSwapR2_USDC_SubMenu(); break;
-      case 3: showAddLiquiditySubMenu(); break;
-      case 4: showRemoveLiquiditySubMenu(); break;
-      case 5: showStakeR2USDSubMenu(); break;
-      case 6: showUnstakeSR2USDSubMenu(); break;
-      case 7: showDepositBTCSubMenu(); break;
-      case 8: showTransactionHistoryBox(); break;
-      case 9: clearLogsAndReturn(); break;
-      case 10:
-        updateWalletData();
-        addLog("Balance/data telah direfresh (dummy).", "success");
-        break;
-      case 11: process.exit(0); break;
+      case 0: showManualSwapUSDC_R2USD_SubMenu(); break;
+      case 1: showAddLiquiditySubMenu(); break;
+      case 2: showTransactionHistoryBox(); break;
+      case 3: updateWalletData(); addLog("Balance/data telah direfresh.", "success"); break;
+      case 4: process.exit(0); break;
     }
   });
 }
 
-// ========== INIT APP ==========
+// ====== INIT APP ======
 function initApp() {
   screen = blessed.screen({
     smartCSR: true,
     title: 'R2 Bot Interface'
   });
-
   blessed.box({
     parent: screen,
     top: 0,
@@ -498,7 +381,6 @@ function initApp() {
     content: '{center} R2 Bot Interface {/center}',
     style: { fg: 'white', bg: 'blue', bold: true }
   });
-
   walletBox = blessed.box({
     parent: screen,
     top: 3,
@@ -508,7 +390,6 @@ function initApp() {
     border: { type: 'line' },
     style: { border: { fg: 'cyan' } }
   });
-
   logBox = blessed.log({
     parent: screen,
     top: 3,
@@ -520,7 +401,6 @@ function initApp() {
     scrollable: true,
     scrollbar: { ch: ' ', style: { bg: 'cyan' } }
   });
-
   menuBox = blessed.list({
     parent: screen,
     bottom: 0,
@@ -538,14 +418,9 @@ function initApp() {
     mouse: true,
     vi: true
   });
-
   promptBox = createPromptBox();
-
   screen.key(['escape', 'q', 'C-c'], () => process.exit(0));
-
   updateWalletData();
   showMainMenu();
 }
-
-// ========== START ==========
 initApp();
