@@ -149,7 +149,6 @@ class AllFeatureBot {
       await this.prompt(
         "Min Delay (detik) antar transaksi? ",
         (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
-      )
     );
     const maxDelay = Number(
       await this.prompt(
@@ -471,28 +470,210 @@ class AllFeatureBot {
 
   async runAllFeatures() {
     this.printHeader();
-    this.log("Run All Features Selected.", "success");
+    console.log(chalk.white("Run All Features"));
+    
+    // Get parameters for each feature
+    const swapUsdcR2usdCount = Number(
+      await this.prompt(
+        "Berapa kali ingin melakukan transaksi swap USDC <> R2USD? ",
+        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
+      )
+    );
+    const swapR2UsdcCount = Number(
+      await this.prompt(
+        "Berapa kali ingin melakukan transaksi swap R2 <> USDC? ",
+        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
+      )
+    );
+    const swapBtcR2btcCount = Number(
+      await this.prompt(
+        "Berapa kali ingin melakukan transaksi swap BTC <> R2BTC? ",
+        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
+      )
+    );
+    const addLiquidityCount = Number(
+      await this.prompt(
+        "Berapa kali ingin Add Liquidity? ",
+        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
+      )
+    );
+    const removeLiquidityCount = Number(
+      await this.prompt(
+        "Berapa kali ingin Remove Liquidity? ",
+        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
+      )
+    );
+    const stakeR2usdCount = Number(
+      await this.prompt(
+        "Berapa kali ingin Stake R2USD? ",
+        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
+      )
+    );
+    const unstakeSr2usdCount = Number(
+      await this.prompt(
+        "Berapa kali ingin Unstake sR2USD? ",
+        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
+      )
+    );
+    const depositBtcCount = Number(
+      await this.prompt(
+        "Berapa kali ingin Deposit BTC? ",
+        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
+      )
+    );
+    
+    const minDelay = Number(
+      await this.prompt(
+        "Min Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0")
+      )
+    );
+    const maxDelay = Number(
+      await this.prompt(
+        "Max Delay (detik) antar transaksi? ",
+        (v) => (!isNaN(v) && Number(v) >= minDelay ? true : "Masukkan angka >= Min Delay")
+      )
+    );
+    
+    const swapUsdcR2usdAmount = Number(
+      await this.prompt(
+        "Masukkan jumlah swap USDC <> R2USD (misal: 1, 0.01, dst): ",
+        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
+      )
+    );
+    const swapR2UsdcAmount = Number(
+      await this.prompt(
+        "Masukkan jumlah swap R2 <> USDC (misal: 1, 0.01, dst): ",
+        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
+      )
+    );
+    const swapBtcR2btcAmount = Number(
+      await this.prompt(
+        "Masukkan jumlah swap BTC <> R2BTC (misal: 0.001, 0.002, dst): ",
+        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
+      )
+    );
+    const stakeR2usdAmount = Number(
+      await this.prompt(
+        "Masukkan jumlah stake R2USD tiap kali? ",
+        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
+      )
+    );
+    const unstakeSr2usdAmount = Number(
+      await this.prompt(
+        "Masukkan jumlah unstake sR2USD tiap kali? ",
+        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
+      )
+    );
+    const depositBtcAmount = Number(
+      await this.prompt(
+        "Masukkan jumlah deposit BTC tiap kali? ",
+        (v) => (!isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0")
+      )
+    );
 
-    // 1. Swap USDC <> R2USD
-    const swapUsdcR2usdCount = Number(await this.prompt("How Many Times Do You Want To Swap USDC <> R2USD? -> ", v => !isNaN(v) && Number(v) > 0 ? true : "Masukkan angka > 0"));
-    const swapUsdcR2usdMinDelay = Number(await this.prompt("Min Delay (detik) antar transaksi? ", v => !isNaN(v) && Number(v) >= 0 ? true : "Masukkan angka >= 0"));
-    const swapUsdcR2usdMaxDelay = Number(await this.prompt("Max Delay (detik) antar transaksi? ", v => !isNaN(v) && Number(v) >= swapUsdcR2usdMinDelay ? true : "Masukkan angka >= Min Delay"));
-
+    // Run all features in sequence
+    let txCounter = 1;
+    
+    // Swap USDC <> R2USD
     for (let i = 1; i <= swapUsdcR2usdCount; i++) {
       const blockNumber = await this.provider.getBlockNumber();
       const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
-      this.log(`[USDC <> R2USD] TX ${i} Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
-      const delay = randomDelay(swapUsdcR2usdMinDelay, swapUsdcR2usdMaxDelay);
+      this.log(`TX ${txCounter++} (USDC<>R2USD ${i}/${swapUsdcR2usdCount}) Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
+      const delay = randomDelay(minDelay, maxDelay);
       this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
-      if (i < swapUsdcR2usdCount) await new Promise(res => setTimeout(res, delay * 1000));
+      if (i < swapUsdcR2usdCount || swapR2UsdcCount > 0 || swapBtcR2btcCount > 0 || addLiquidityCount > 0 || removeLiquidityCount > 0 || stakeR2usdCount > 0 || unstakeSr2usdCount > 0 || depositBtcCount > 0) {
+        await new Promise(res => setTimeout(res, delay * 1000));
+      }
     }
-
-    // ... lanjutkan untuk semua fitur lain sesuai pola di atas ...
-    // Bisa copy-paste dari menu manual, ganti label dan prompt sesuai batch Run All Features
-
+    
+    // Swap R2 <> USDC
+    for (let i = 1; i <= swapR2UsdcCount; i++) {
+      const blockNumber = await this.provider.getBlockNumber();
+      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
+      this.log(`TX ${txCounter++} (R2<>USDC ${i}/${swapR2UsdcCount}) Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
+      const delay = randomDelay(minDelay, maxDelay);
+      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
+      if (i < swapR2UsdcCount || swapBtcR2btcCount > 0 || addLiquidityCount > 0 || removeLiquidityCount > 0 || stakeR2usdCount > 0 || unstakeSr2usdCount > 0 || depositBtcCount > 0) {
+        await new Promise(res => setTimeout(res, delay * 1000));
+      }
+    }
+    
+    // Swap BTC <> R2BTC
+    for (let i = 1; i <= swapBtcR2btcCount; i++) {
+      const blockNumber = await this.provider.getBlockNumber();
+      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
+      this.log(`TX ${txCounter++} (BTC<>R2BTC ${i}/${swapBtcR2btcCount}) Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
+      const delay = randomDelay(minDelay, maxDelay);
+      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
+      if (i < swapBtcR2btcCount || addLiquidityCount > 0 || removeLiquidityCount > 0 || stakeR2usdCount > 0 || unstakeSr2usdCount > 0 || depositBtcCount > 0) {
+        await new Promise(res => setTimeout(res, delay * 1000));
+      }
+    }
+    
+    // Add Liquidity
+    for (let i = 1; i <= addLiquidityCount; i++) {
+      const blockNumber = await this.provider.getBlockNumber();
+      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
+      this.log(`TX ${txCounter++} (Add Liquidity ${i}/${addLiquidityCount}) Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
+      const delay = randomDelay(minDelay, maxDelay);
+      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
+      if (i < addLiquidityCount || removeLiquidityCount > 0 || stakeR2usdCount > 0 || unstakeSr2usdCount > 0 || depositBtcCount > 0) {
+        await new Promise(res => setTimeout(res, delay * 1000));
+      }
+    }
+    
+    // Remove Liquidity
+    for (let i = 1; i <= removeLiquidityCount; i++) {
+      const blockNumber = await this.provider.getBlockNumber();
+      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
+      this.log(`TX ${txCounter++} (Remove Liquidity ${i}/${removeLiquidityCount}) Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
+      const delay = randomDelay(minDelay, maxDelay);
+      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
+      if (i < removeLiquidityCount || stakeR2usdCount > 0 || unstakeSr2usdCount > 0 || depositBtcCount > 0) {
+        await new Promise(res => setTimeout(res, delay * 1000));
+      }
+    }
+    
+    // Stake R2USD
+    for (let i = 1; i <= stakeR2usdCount; i++) {
+      const blockNumber = await this.provider.getBlockNumber();
+      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
+      this.log(`TX ${txCounter++} (Stake R2USD ${i}/${stakeR2usdCount}) Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
+      const delay = randomDelay(minDelay, maxDelay);
+      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
+      if (i < stakeR2usdCount || unstakeSr2usdCount > 0 || depositBtcCount > 0) {
+        await new Promise(res => setTimeout(res, delay * 1000));
+      }
+    }
+    
+    // Unstake sR2USD
+    for (let i = 1; i <= unstakeSr2usdCount; i++) {
+      const blockNumber = await this.provider.getBlockNumber();
+      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
+      this.log(`TX ${txCounter++} (Unstake sR2USD ${i}/${unstakeSr2usdCount}) Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
+      const delay = randomDelay(minDelay, maxDelay);
+      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
+      if (i < unstakeSr2usdCount || depositBtcCount > 0) {
+        await new Promise(res => setTimeout(res, delay * 1000));
+      }
+    }
+    
+    // Deposit BTC
+    for (let i = 1; i <= depositBtcCount; i++) {
+      const blockNumber = await this.provider.getBlockNumber();
+      const explorerUrl = `https://sepolia.etherscan.io/block/${blockNumber}`;
+      this.log(`TX ${txCounter++} (Deposit BTC ${i}/${depositBtcCount}) Blok: ${blockNumber} Explore: ${explorerUrl}`, "success");
+      const delay = randomDelay(minDelay, maxDelay);
+      this.log(`Delay sebelum TX berikutnya: ${delay} detik`, "info");
+      if (i < depositBtcCount) {
+        await new Promise(res => setTimeout(res, delay * 1000));
+      }
+    }
+    
+    this.log("Semua fitur telah dijalankan!", "success");
     await this.prompt("Tekan Enter untuk kembali ke menu utama...");
   }
-
 }
 
 async function main() {
