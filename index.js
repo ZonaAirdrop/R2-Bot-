@@ -30,6 +30,22 @@ const CONFIG = {
   NETWORK_NAME: "Sepolia Testnet"
 };
 
+const ERC20_ABI = [
+  "function balanceOf(address owner) view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "function approve(address spender, uint256 amount) returns (bool)",
+  "function allowance(address owner, address spender) view returns (uint256)"
+];
+
+const ROUTER_ABI = [
+  "function swapExactTokensForTokens(uint256,uint256,address[],address,uint256) returns (uint256[])",
+  "function addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256) returns (uint256,uint256,uint256)"
+];
+
+const usdc = new ethers.Contract(CONFIG.USDC_ADDRESS, ERC20_ABI, wallet);
+const r2usd = new ethers.Contract(CONFIG.R2USD_ADDRESS, ERC20_ABI, wallet);
+const router = new ethers.Contract(CONFIG.SWAP_ROUTER, ROUTER_ABI, wallet);
+
 // State
 let walletInfo = {
   balances: {
