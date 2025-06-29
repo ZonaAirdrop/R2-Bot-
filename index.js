@@ -104,10 +104,17 @@ function promptStep(labels, callback) {
   let answers = [];
   function ask(i) {
     if (i >= labels.length) {
+      promptBox.hide();
+      screen.render();
       callback(answers);
       return;
     }
+    promptBox.show();
+    promptBox.focus();
+    screen.render();
     promptBox.input(labels[i], '', (err, value) => {
+      promptBox.hide();
+      screen.render();
       if (err || !value || isNaN(Number(value)) || Number(value) <= 0) {
         addLog("Input tidak valid.", "error");
         showMainMenu();
