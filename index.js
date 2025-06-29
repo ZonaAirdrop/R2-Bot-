@@ -5,6 +5,11 @@ import { ethers } from "ethers";
 
 // ====== UNISWAP V2 ROUTER ABI (MINIMAL, + ADD/REMOVE/STAKE/SWAP) ======
 const routerAbi = [
+  "function getAmountsOut(uint256,address[]) view returns (uint256[])",
+  "function swapExactTokensForTokens(uint256,uint256,address[],address,uint256) returns (uint256[])",
+  "function approve(address,uint256) returns (bool)"
+];
+//
   // WETH
   {
     "inputs": [],
@@ -152,9 +157,6 @@ class AllFeatureBot {
     this.state = {};
 
     this.contracts = {
-      usdc: "0x8BEbFCBe5468F146533C182dF3DFbF5ff9BE00E2",
-      r2usd: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",
-      router_r2usd_usdc: "0x47d1b0623bb3e557bf8544c159c9ae51d091f8a2",
       usdc: "0x8BEbFCBe5468F146533C182dF3DFbF5ff9BE00E2",                      
       r2usd: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",                    
       r2: "0xb816bB88f836EA75Ca4071B46FF285f690C43bb7",                       
@@ -311,9 +313,7 @@ class AllFeatureBot {
     try {
       const usdcContract = new ethers.Contract(this.contracts.usdc, this.abis.erc20, this.wallet);
       const r2usdContract = new ethers.Contract(this.contracts.r2usd, this.abis.erc20, this.wallet);
-      const swapRouterAddress = direction === "1"
-        ? this.contracts.router_usdc_r2usd
-        : this.contracts.router_r2usd_usdc;
+      const swapRouterAddress = this.contracts.router_usdc_r2usd;
       const swapRouterContract = new ethers.Contract(swapRouterAddress, this.abis.swap, this.wallet);
 
       const usdcDecimals = await usdcContract.decimals();
