@@ -17,8 +17,6 @@ const wallet = new ethers.Wallet(PRIVATE_KEY, provider);
 console.log("✅ ACTIVE WALLET:", wallet.address);
 console.log("🌐 NETWORK ENDPOINT:", RPC_URL);
 
-wib = pytz.timezone('Asia/Jakarta')
-
 const CONFIG = {
   RPC_URL: RPC_URL,
   USDC_ADDRESS: "0xc7BcCf452965Def7d5D9bF02943e3348F758D3CB",
