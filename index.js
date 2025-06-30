@@ -1277,8 +1277,8 @@ const headerBox = blessed.box({
   style: { fg: "white", bg: "default" }
 });
 
-figlet.text("zonaairdrop".toUpperCase(), { font: "ANSI Shadow" }, (err, data) => {
-  if (err) headerBox.setContent("{center}{bold}zonaairdrop{/bold}{/center}");
+figlet.text("R2".toUpperCase(), { font: "ANSI Shadow" }, (err, data) => {
+  if (err) headerBox.setContent("{center}{bold}R2{/bold}{/center}");
   else headerBox.setContent(`{center}{bold}{bright-cyan-fg}${data}{/bright-cyan-fg}{/bold}{/center}`);
   safeRender();
 });
