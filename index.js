@@ -1511,40 +1511,52 @@ function adjustLayout() {
   headerBox.top = 0;
   headerBox.height = headerHeight;
   headerBox.width = "100%";
+
   descriptionBox.top = "23%";
   descriptionBox.height = Math.floor(screenHeight * 0.05);
+
+  // Geser logsBox ke kanan
   logsBox.top = headerHeight + descriptionBox.height;
-  logsBox.left = 0;
-  logsBox.width = Math.floor(screenWidth * 0.6);
+  logsBox.left = Math.floor(screenWidth * 0.6);
+  logsBox.width = Math.floor(screenWidth * 0.4);
   logsBox.height = screenHeight - (headerHeight + descriptionBox.height);
+
+  // Geser dashboard dan menu ke kiri
   welcomeBox.top = headerHeight + descriptionBox.height;
-  welcomeBox.left = Math.floor(screenWidth * 0.6);
-  welcomeBox.width = Math.floor(screenWidth * 0.4);
+  welcomeBox.left = 0;
+  welcomeBox.width = Math.floor(screenWidth * 0.6);
   welcomeBox.height = Math.floor(screenHeight * 0.35);
+
   walletBox.top = headerHeight + descriptionBox.height;
-  walletBox.left = Math.floor(screenWidth * 0.6);
-  walletBox.width = Math.floor(screenWidth * 0.4);
+  walletBox.left = 0;
+  walletBox.width = Math.floor(screenWidth * 0.6);
   walletBox.height = Math.floor(screenHeight * 0.35);
+
   mainMenu.top = headerHeight + descriptionBox.height + welcomeBox.height;
-  mainMenu.left = Math.floor(screenWidth * 0.6);
-  mainMenu.width = Math.floor(screenWidth * 0.4);
+  mainMenu.left = 0;
+  mainMenu.width = Math.floor(screenWidth * 0.6);
   mainMenu.height = screenHeight - (headerHeight + descriptionBox.height + welcomeBox.height);
+
   sepoliaSubMenu.top = mainMenu.top;
   sepoliaSubMenu.left = mainMenu.left;
   sepoliaSubMenu.width = mainMenu.width;
   sepoliaSubMenu.height = mainMenu.height;
+
   sepoliaR2SubMenu.top = mainMenu.top;
   sepoliaR2SubMenu.left = mainMenu.left;
   sepoliaR2SubMenu.width = mainMenu.width;
   sepoliaR2SubMenu.height = mainMenu.height;
+
   claimFaucetSubMenu.top = mainMenu.top;
   claimFaucetSubMenu.left = mainMenu.left;
   claimFaucetSubMenu.width = mainMenu.width;
   claimFaucetSubMenu.height = mainMenu.height;
+
   sepoliaManualSwapSubMenu.top = mainMenu.top;
   sepoliaManualSwapSubMenu.left = mainMenu.left;
   sepoliaManualSwapSubMenu.width = mainMenu.width;
   sepoliaManualSwapSubMenu.height = mainMenu.height;
+
   sepoliaChangeRandomAmountSubMenu.top = mainMenu.top;
   sepoliaChangeRandomAmountSubMenu.left = mainMenu.left;
   sepoliaChangeRandomAmountSubMenu.width = mainMenu.width;
