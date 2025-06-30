@@ -1278,7 +1278,7 @@ const headerBox = blessed.box({
 });
 
 figlet.text("zonaairdrop".toUpperCase(), { font: "ANSI Shadow" }, (err, data) => {
-  if (err) headerBox.setContent("{center}{bold}YetiDAO{/bold}{/center}");
+  if (err) headerBox.setContent("{center}{bold}zonaairdrop{/bold}{/center}");
   else headerBox.setContent(`{center}{bold}{bright-cyan-fg}${data}{/bright-cyan-fg}{/bold}{/center}`);
   safeRender();
 });
