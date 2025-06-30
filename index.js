@@ -1,4 +1,5 @@
 import "dotenv/config";
+import blessed from "blessed";
 import readline from "readline";
 import chalk from "chalk";
 import { ethers } from "ethers";
