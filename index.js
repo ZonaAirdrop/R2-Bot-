@@ -1343,7 +1343,6 @@ function getMainMenItems() {
   items = items.concat([
     "Sepolia Network",
     "Sepolia R2 Network",
-    "Claim Faucet",
     "Antrian Transaksi",
     "Clear Transaction Logs",
     "Refresh",
