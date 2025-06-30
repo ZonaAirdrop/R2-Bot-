@@ -3,23 +3,6 @@ import blessed from "blessed";
 import figlet from "figlet";
 import { ethers } from "ethers";
 import axios from "axios";
-import FormData from "form-data";
-import { v4 as uuid } from "uuid";
-
-const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const APP_ID = "1356609826230243469";
-const GUILD_ID = "1308368864505106442";
-const COMMAND_ID = "1356665931056808211";
-const COMMAND_VERSION = "1356665931056808212";
-const initialProvider = new ethers.JsonRpcProvider(process.env.RPC_URL);
-const initialWallet = new ethers.Wallet(process.env.PRIVATE_KEY, initialProvider);
-const wallet_address = initialWallet.address;
-const MAX_LOGS = 100;
-const DISPLAY_LOGS = 50;
-
-const NETWORK_CHANNEL_IDS = {
-  "Sepolia": "1339883019556749395"
-};
 
 const SEPOLIA_CONFIG = {
   RPC_URL: process.env.RPC_URL,
