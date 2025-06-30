@@ -1494,12 +1494,12 @@ screen.append(sepoliaManualSwapSubMenu);
 screen.append(sepoliaChangeRandomAmountSubMenu);
 
 function updateWelcomeBox() {
-  const botVersion = "FINAL TESTNET V1.0.0";
-  const content = `{center}{bold}{bright-red-fg}[:: R2 :: AUTO :: BOT ::]{/bright-red-fg}{/bold}{/center}\n\n` +
+  const botVersion = "FINAL TESTNET";
+  const content = `{center}{bold}{bright-red-fg}[:: R2 :: Tesnet :: Final ::]{/bright-red-fg}{/bold}{/center}\n\n` +
     `{center}{bold}{bright-yellow-fg}Version : ${botVersion}{/bright-yellow-fg}{/bold}{/center}\n` +
-    `{center}{bold}{bright-cyan-fg}➥ Join Telegram : t.me/YetiDAO{/bright-cyan-fg}{/bold}{/center}\n` +
-    `{center}{bold}{bright-cyan-fg}➥ Subscribe : Youtube.com/@YetiDAO{/bright-cyan-fg}{/bold}{/center}\n` +
-    `{center}{bold}{grey-fg}➥ Join Telegram : t.me/cryptodai3{/grey-fg}{/bold}{/center}\n`;
+    `{center}{bold}{bright-cyan-fg}➥ Lol{/bright-cyan-fg}{/bold}{/center}\n` +
+    `{center}{bold}{bright-cyan-fg}➥ Lol{/bright-cyan-fg}{/bold}{/center}\n` +
+    `{center}{bold}{grey-fg}➥ Lol{/grey-fg}{/bold}{/center}\n`;
   welcomeBox.setContent(content);
   safeRender();
 }
@@ -1827,5 +1827,5 @@ screen.key(["C-down"], () => { logsBox.scroll(1); safeRender(); });
 
 safeRender();
 mainMenu.focus();
-addLog("Dont Forget To Subscribe YT And Telegram @Yetidao!!", "system");
+addLog("infokan tobrut yang sedap!", "system");
 updateWelcomeBox();
