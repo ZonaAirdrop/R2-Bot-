@@ -4,6 +4,21 @@ import figlet from "figlet";
 import { ethers } from "ethers";
 import axios from "axios";
 
+const initialProvider = new ethers.JsonRpcProvider(process.env.RPC_URL);
+const initialWallet = new ethers.Wallet(process.env.PRIVATE_KEY, initialProvider);
+const wallet_address = initialWallet.address; // <-- Ini harus di atas!
+
+let walletInfoByNetwork = {
+  "Sepolia": {
+    address: wallet_address,
+    ...
+  },
+  "Sepolia R2": {
+    address: wallet_address,
+    ...
+  }
+};
+
 const SEPOLIA_CONFIG = {
   RPC_URL: process.env.RPC_URL,
   USDC_ADDRESS: process.env.USDC_ADDRESS,
