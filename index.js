@@ -8,30 +8,8 @@ const initialProvider = new ethers.JsonRpcProvider(process.env.RPC_URL);
 const initialWallet = new ethers.Wallet(process.env.PRIVATE_KEY, initialProvider);
 const wallet_address = initialWallet.address; // <-- Ini harus di atas!
 
-let walletInfoByNetwork = {
-  "Sepolia": {
-    address: wallet_address,
-    balanceNative: "0.00",
-    balanceUsdc: "0.00",
-    balanceR2usd: "0.00",
-    balanceSr2usd: "0.00",
-    balanceLpR2usdSr2usd: "0.00",
-    balanceLpUsdcR2usd: "0.00",
-    network: "Sepolia Testnet",
-    status: "Initializing"
-  },
-  "Sepolia R2": {
-    address: wallet_address,
-    balanceNative: "0.00",
-    balanceUsdc: "0.00",
-    balanceR2: "0.00",
-    balanceR2usd: "0.00",
-    balanceLpR2R2usd: "0.00",
-    balanceLpUsdcR2: "0.00",
-    network: "Sepolia R2 Testnet",
-    status: "Initializing"
-  }
-};
+const MAX_LOGS = 100;
+const DISPLAY_LOGS = 50;
 
 const SEPOLIA_CONFIG = {
   RPC_URL: process.env.RPC_URL,
