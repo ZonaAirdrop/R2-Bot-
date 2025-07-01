@@ -67,7 +67,6 @@ Then open and fill in the required environment variables:
 
 ```env
 PRIVATE_KEY=0x...         # Replace with your actual private key
-DISCORD_TOKEN=...         # Optional, if used
 ```
 
 ---
