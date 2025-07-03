@@ -88,7 +88,7 @@ const ROUTER_ABI = [
 ];
 
 function getRandomAmount() {
-  return Math.floor(Math.random() * 0.1) + 10;
+  return Math.floor(Math.random() * 0.1) + 1.1;
 }
 function getRandomDelay(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
