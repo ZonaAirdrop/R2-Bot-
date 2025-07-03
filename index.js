@@ -136,7 +136,7 @@ async function swapSepolia(isUsdcToR2usd, amount) {
     const amountWei = ethers.parseUnits(amount.toString(), 6);
     await ensureApproval(config.R2USD_ADDRESS, config.ROUTER_R2USD_TO_USDC, amountWei, wallet, 6);
     logger.swap(`Mulai swap R2USD → USDC sebesar ${amount} token...`);
-    const slippage = 1;
+    const slippage = 0.5;
     const minDy = ethers.parseUnits((parseFloat(amount) * slippage).toFixed(6), 6);
     const methodId = "0x3df02124";
     const data = ethers.concat([
