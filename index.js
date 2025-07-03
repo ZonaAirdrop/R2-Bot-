@@ -87,6 +87,10 @@ const ROUTER_ABI = [
   }
 ];
 
+// SLIPPAGE SETTINGS (sama untuk swap & add liquidity)
+const SLIPPAGE_R2USD = 0.001; // 0.1% (USDC <-> R2USD Sepolia)
+const SLIPPAGE_R2 = 0.005;    // 0.5% (USDC <-> R2 Sepolia R2)
+
 function getRandomAmount() {
   return Math.floor(Math.random() * 51) + 50;
 }
@@ -98,64 +102,75 @@ function explorerLink(txHash) {
 }
 
 async function ensureApproval(tokenAddress, spender, amount, wallet, decimals) {
-  const tokenContract = new ethers.Contract(tokenAddress, ERC20ABI, wallet);
-  let allowance = await tokenContract.allowance(wallet.address, spender);
-  if (BigInt(allowance) < BigInt(amount)) {
-    logger.loading(`Approve token ${tokenAddress} ke ${spender}`);
-    const approveTx = await tokenContract.approve(spender, ethers.parseUnits("1000000", decimals));
-    await approveTx.wait();
-    logger.success(`Approve berhasil untuk ${spender}`);
+  try {
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20ABI, wallet);
+    let allowance = await tokenContract.allowance(wallet.address, spender);
+    if (BigInt(allowance) < BigInt(amount)) {
+      logger.loading(`Approve token ${tokenAddress} ke ${spender}`);
+      const approveTx = await tokenContract.approve(spender, ethers.parseUnits("1000000", decimals));
+      await approveTx.wait();
+      logger.success(`Approve berhasil untuk ${spender}`);
+    }
+  } catch (e) {
+    logger.error("Approve gagal, error: " + e.message);
   }
 }
 
+// Swap USDC <-> R2USD Sepolia
 async function swapSepolia(isUsdcToR2usd, amount) {
   const config = SEPOLIA_CONFIG;
   const provider = new ethers.JsonRpcProvider(config.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
-  if (isUsdcToR2usd) {
-    const amountWei = ethers.parseUnits(amount.toString(), 6);
-    await ensureApproval(config.USDC_ADDRESS, config.ROUTER_USDC_TO_R2USD, amountWei, wallet, 6);
-    logger.swap(`Mulai swap USDC → R2USD sebesar ${amount} token...`);
-    const methodId = "0x095e7a95";
-    const data = ethers.concat([
-      methodId,
-      ethers.AbiCoder.defaultAbiCoder().encode(
-        ["address", "uint256", "uint256", "uint256", "uint256", "uint256", "uint256"],
-        [wallet.address, amountWei, 0, 0, 0, 0, 0]
-      ),
-    ]);
-    const tx = await wallet.sendTransaction({
-      to: config.ROUTER_USDC_TO_R2USD,
-      data: data,
-      gasLimit: 500000
-    });
-    await tx.wait();
-    logger.swapSuccess(`Swap selesai: ${explorerLink(tx.hash)}`);
-  } else {
-    const amountWei = ethers.parseUnits(amount.toString(), 6);
-    await ensureApproval(config.R2USD_ADDRESS, config.ROUTER_R2USD_TO_USDC, amountWei, wallet, 6);
-    logger.swap(`Mulai swap R2USD → USDC sebesar ${amount} token...`);
-    const slippage = 0.97;
-    const minDy = ethers.parseUnits((parseFloat(amount) * slippage).toFixed(6), 6);
-    const methodId = "0x3df02124";
-    const data = ethers.concat([
-      methodId,
-      ethers.AbiCoder.defaultAbiCoder().encode(
-        ["int128", "int128", "uint256", "uint256"],
-        [0, 1, amountWei, minDy]
-      ),
-    ]);
-    const tx = await wallet.sendTransaction({
-      to: config.ROUTER_R2USD_TO_USDC,
-      data: data,
-      gasLimit: 500000
-    });
-    await tx.wait();
-    logger.swapSuccess(`Swap selesai: ${explorerLink(tx.hash)}`);
+  try {
+    if (isUsdcToR2usd) {
+      const amountWei = ethers.parseUnits(amount.toString(), 6);
+      await ensureApproval(config.USDC_ADDRESS, config.ROUTER_USDC_TO_R2USD, amountWei, wallet, 6);
+      logger.swap(`Mulai swap USDC → R2USD sebesar ${amount} token...`);
+      const methodId = "0x095e7a95";
+      const data = ethers.concat([
+        methodId,
+        ethers.AbiCoder.defaultAbiCoder().encode(
+          ["address", "uint256", "uint256", "uint256", "uint256", "uint256", "uint256"],
+          [wallet.address, amountWei, 0, 0, 0, 0, 0]
+        ),
+      ]);
+      const tx = await wallet.sendTransaction({
+        to: config.ROUTER_USDC_TO_R2USD,
+        data: data,
+        gasLimit: 500000
+      });
+      await tx.wait();
+      logger.swapSuccess(`Swap selesai: ${explorerLink(tx.hash)}`);
+    } else {
+      const amountWei = ethers.parseUnits(amount.toString(), 6);
+      await ensureApproval(config.R2USD_ADDRESS, config.ROUTER_R2USD_TO_USDC, amountWei, wallet, 6);
+      logger.swap(`Mulai swap R2USD → USDC sebesar ${amount} token...`);
+      const minDy = ethers.parseUnits(
+        (parseFloat(amount) * (1 - SLIPPAGE_R2USD)).toFixed(6), 6
+      );
+      const methodId = "0x3df02124";
+      const data = ethers.concat([
+        methodId,
+        ethers.AbiCoder.defaultAbiCoder().encode(
+          ["int128", "int128", "uint256", "uint256"],
+          [0, 1, amountWei, minDy]
+        ),
+      ]);
+      const tx = await wallet.sendTransaction({
+        to: config.ROUTER_R2USD_TO_USDC,
+        data: data,
+        gasLimit: 500000
+      });
+      await tx.wait();
+      logger.swapSuccess(`Swap selesai: ${explorerLink(tx.hash)}`);
+    }
+  } catch (e) {
+    logger.error("Swap USDC <-> R2USD gagal, error: " + (e.reason || e.message));
   }
 }
 
+// Add Liquidity USDC-R2USD Sepolia
 async function addLpR2Sepolia(amount) {
   const config = SEPOLIA_CONFIG;
   const provider = new ethers.JsonRpcProvider(config.RPC_URL);
@@ -163,63 +178,84 @@ async function addLpR2Sepolia(amount) {
   const router = new ethers.Contract(config.ROUTER_USDC_TO_R2USD, ROUTER_ABI, wallet);
   const amountWei = ethers.parseUnits(amount.toString(), 6);
 
-  await ensureApproval(config.USDC_ADDRESS, config.ROUTER_USDC_TO_R2USD, amountWei, wallet, 6);
-  await ensureApproval(config.R2USD_ADDRESS, config.ROUTER_USDC_TO_R2USD, amountWei, wallet, 6);
+  try {
+    await ensureApproval(config.USDC_ADDRESS, config.ROUTER_USDC_TO_R2USD, amountWei, wallet, 6);
+    await ensureApproval(config.R2USD_ADDRESS, config.ROUTER_USDC_TO_R2USD, amountWei, wallet, 6);
 
-  const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-  logger.liquidity(`Mulai add liquidity USDC-R2USD sebesar ${amount} token...`);
-  const tx = await router.addLiquidity(
-    config.USDC_ADDRESS,
-    config.R2USD_ADDRESS,
-    amountWei,
-    amountWei,
-    0, 0,
-    wallet.address,
-    deadline
-  );
-  await tx.wait();
-  logger.liquiditySuccess(`Add Liquidity selesai: ${explorerLink(tx.hash)}`);
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+    logger.liquidity(`Mulai add liquidity USDC-R2USD sebesar ${amount} token...`);
+    // Min amount pakai slippage R2USD
+    const amountAMin = ethers.parseUnits((amount * (1 - SLIPPAGE_R2USD)).toFixed(6), 6);
+    const amountBMin = ethers.parseUnits((amount * (1 - SLIPPAGE_R2USD)).toFixed(6), 6);
+
+    const tx = await router.addLiquidity(
+      config.USDC_ADDRESS,
+      config.R2USD_ADDRESS,
+      amountWei,
+      amountWei,
+      amountAMin,
+      amountBMin,
+      wallet.address,
+      deadline
+    );
+    await tx.wait();
+    logger.liquiditySuccess(`Add Liquidity selesai: ${explorerLink(tx.hash)}`);
+  } catch (e) {
+    logger.error("Add liquidity USDC-R2USD gagal, error: " + (e.reason || e.message));
+  }
 }
 
+// Swap USDC <-> R2 Sepolia R2
 async function swapSepoliaR2(isUsdcToR2, amount) {
   const config = SEPOLIA_R2_CONFIG;
   const provider = new ethers.JsonRpcProvider(config.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
   const router = new ethers.Contract(config.ROUTER_ADDRESS, ROUTER_ABI, wallet);
 
-  if (isUsdcToR2) {
-    const amountWei = ethers.parseUnits(amount.toString(), 6);
-    await ensureApproval(config.USDC_ADDRESS, config.ROUTER_ADDRESS, amountWei, wallet, 6);
-    const path = [config.USDC_ADDRESS, config.R2_ADDRESS];
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-    logger.swap(`Mulai swap USDC → R2 sebesar ${amount} token...`);
-    const tx = await router.swapExactTokensForTokens(
-      amountWei,
-      0,
-      path,
-      wallet.address,
-      deadline
-    );
-    await tx.wait();
-    logger.swapSuccess(`Swap selesai: ${explorerLink(tx.hash)}`);
-  } else {
-    const amountWei = ethers.parseUnits(amount.toString(), 18);
-    await ensureApproval(config.R2_ADDRESS, config.ROUTER_ADDRESS, amountWei, wallet, 18);
-    const path = [config.R2_ADDRESS, config.USDC_ADDRESS];
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-    logger.swap(`Mulai swap R2 → USDC sebesar ${amount} token...`);
-    const tx = await router.swapExactTokensForTokens(
-      amountWei,
-      0,
-      path,
-      wallet.address,
-      deadline
-    );
-    await tx.wait();
-    logger.swapSuccess(`Swap selesai: ${explorerLink(tx.hash)}`);
+  try {
+    if (isUsdcToR2) {
+      const amountWei = ethers.parseUnits(amount.toString(), 6);
+      await ensureApproval(config.USDC_ADDRESS, config.ROUTER_ADDRESS, amountWei, wallet, 6);
+      const path = [config.USDC_ADDRESS, config.R2_ADDRESS];
+      const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+      logger.swap(`Mulai swap USDC → R2 sebesar ${amount} token...`);
+      const minAmountOut = ethers.parseUnits(
+        (parseFloat(amount) * (1 - SLIPPAGE_R2)).toFixed(6), 18
+      );
+      const tx = await router.swapExactTokensForTokens(
+        amountWei,
+        minAmountOut,
+        path,
+        wallet.address,
+        deadline
+      );
+      await tx.wait();
+      logger.swapSuccess(`Swap selesai: ${explorerLink(tx.hash)}`);
+    } else {
+      const amountWei = ethers.parseUnits(amount.toString(), 18);
+      await ensureApproval(config.R2_ADDRESS, config.ROUTER_ADDRESS, amountWei, wallet, 18);
+      const path = [config.R2_ADDRESS, config.USDC_ADDRESS];
+      const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+      logger.swap(`Mulai swap R2 → USDC sebesar ${amount} token...`);
+      const minAmountOut = ethers.parseUnits(
+        (parseFloat(amount) * (1 - SLIPPAGE_R2)).toFixed(6), 6
+      );
+      const tx = await router.swapExactTokensForTokens(
+        amountWei,
+        minAmountOut,
+        path,
+        wallet.address,
+        deadline
+      );
+      await tx.wait();
+      logger.swapSuccess(`Swap selesai: ${explorerLink(tx.hash)}`);
+    }
+  } catch (e) {
+    logger.error("Swap USDC <-> R2 gagal, error: " + (e.reason || e.message));
   }
 }
 
+// Add Liquidity USDC-R2 Sepolia R2
 async function addLpSepoliaR2(amount) {
   const config = SEPOLIA_R2_CONFIG;
   const provider = new ethers.JsonRpcProvider(config.RPC_URL);
@@ -228,22 +264,31 @@ async function addLpSepoliaR2(amount) {
   const amountUsdc = ethers.parseUnits(amount.toString(), 6);
   const amountR2 = ethers.parseUnits(amount.toString(), 18);
 
-  await ensureApproval(config.USDC_ADDRESS, config.ROUTER_ADDRESS, amountUsdc, wallet, 6);
-  await ensureApproval(config.R2_ADDRESS, config.ROUTER_ADDRESS, amountR2, wallet, 18);
+  try {
+    await ensureApproval(config.USDC_ADDRESS, config.ROUTER_ADDRESS, amountUsdc, wallet, 6);
+    await ensureApproval(config.R2_ADDRESS, config.ROUTER_ADDRESS, amountR2, wallet, 18);
 
-  const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-  logger.liquidity(`Mulai add liquidity USDC-R2 sebesar ${amount} token...`);
-  const tx = await router.addLiquidity(
-    config.USDC_ADDRESS,
-    config.R2_ADDRESS,
-    amountUsdc,
-    amountR2,
-    0, 0,
-    wallet.address,
-    deadline
-  );
-  await tx.wait();
-  logger.liquiditySuccess(`Add Liquidity selesai: ${explorerLink(tx.hash)}`);
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+    logger.liquidity(`Mulai add liquidity USDC-R2 sebesar ${amount} token...`);
+    // Min amount pakai slippage R2
+    const amountAMin = ethers.parseUnits((amount * (1 - SLIPPAGE_R2)).toFixed(6), 6);
+    const amountBMin = ethers.parseUnits((amount * (1 - SLIPPAGE_R2)).toFixed(6), 18);
+
+    const tx = await router.addLiquidity(
+      config.USDC_ADDRESS,
+      config.R2_ADDRESS,
+      amountUsdc,
+      amountR2,
+      amountAMin,
+      amountBMin,
+      wallet.address,
+      deadline
+    );
+    await tx.wait();
+    logger.liquiditySuccess(`Add Liquidity selesai: ${explorerLink(tx.hash)}`);
+  } catch (e) {
+    logger.error("Add liquidity USDC-R2 gagal, error: " + (e.reason || e.message));
+  }
 }
 
 async function runSwapBolakBalik(times, fn, desc, minDelay, maxDelay) {
