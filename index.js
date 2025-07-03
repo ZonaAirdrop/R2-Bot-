@@ -87,9 +87,9 @@ const ROUTER_ABI = [
   }
 ];
 
-// SLIPPAGE SETTINGS (sama untuk swap & add liquidity)
-const SLIPPAGE_R2USD = 0.001; // 0.1% (USDC <-> R2USD Sepolia)
-const SLIPPAGE_R2 = 0.005;    // 0.5% (USDC <-> R2 Sepolia R2)
+// SLIPPAGE SETTINGS
+const SLIPPAGE_R2USD = 0.001; // 0.1% for R2USD pools
+const SLIPPAGE_R2 = 0.005;    // 0.5% for R2 pools
 
 function getRandomAmount() {
   return Math.floor(Math.random() * 51) + 50;
@@ -116,7 +116,6 @@ async function ensureApproval(tokenAddress, spender, amount, wallet, decimals) {
   }
 }
 
-// Swap USDC <-> R2USD Sepolia
 async function swapSepolia(isUsdcToR2usd, amount) {
   const config = SEPOLIA_CONFIG;
   const provider = new ethers.JsonRpcProvider(config.RPC_URL);
@@ -170,7 +169,6 @@ async function swapSepolia(isUsdcToR2usd, amount) {
   }
 }
 
-// Add Liquidity USDC-R2USD Sepolia
 async function addLpR2Sepolia(amount) {
   const config = SEPOLIA_CONFIG;
   const provider = new ethers.JsonRpcProvider(config.RPC_URL);
@@ -184,17 +182,12 @@ async function addLpR2Sepolia(amount) {
 
     const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
     logger.liquidity(`Mulai add liquidity USDC-R2USD sebesar ${amount} token...`);
-    // Min amount pakai slippage R2USD
-    const amountAMin = ethers.parseUnits((amount * (1 - SLIPPAGE_R2USD)).toFixed(6), 6);
-    const amountBMin = ethers.parseUnits((amount * (1 - SLIPPAGE_R2USD)).toFixed(6), 6);
-
     const tx = await router.addLiquidity(
       config.USDC_ADDRESS,
       config.R2USD_ADDRESS,
       amountWei,
       amountWei,
-      amountAMin,
-      amountBMin,
+      0, 0,
       wallet.address,
       deadline
     );
@@ -205,7 +198,6 @@ async function addLpR2Sepolia(amount) {
   }
 }
 
-// Swap USDC <-> R2 Sepolia R2
 async function swapSepoliaR2(isUsdcToR2, amount) {
   const config = SEPOLIA_R2_CONFIG;
   const provider = new ethers.JsonRpcProvider(config.RPC_URL);
@@ -255,7 +247,6 @@ async function swapSepoliaR2(isUsdcToR2, amount) {
   }
 }
 
-// Add Liquidity USDC-R2 Sepolia R2
 async function addLpSepoliaR2(amount) {
   const config = SEPOLIA_R2_CONFIG;
   const provider = new ethers.JsonRpcProvider(config.RPC_URL);
@@ -270,17 +261,12 @@ async function addLpSepoliaR2(amount) {
 
     const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
     logger.liquidity(`Mulai add liquidity USDC-R2 sebesar ${amount} token...`);
-    // Min amount pakai slippage R2
-    const amountAMin = ethers.parseUnits((amount * (1 - SLIPPAGE_R2)).toFixed(6), 6);
-    const amountBMin = ethers.parseUnits((amount * (1 - SLIPPAGE_R2)).toFixed(6), 18);
-
     const tx = await router.addLiquidity(
       config.USDC_ADDRESS,
       config.R2_ADDRESS,
       amountUsdc,
       amountR2,
-      amountAMin,
-      amountBMin,
+      0, 0,
       wallet.address,
       deadline
     );
