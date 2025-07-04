@@ -52,9 +52,9 @@ const CONFIG = {
 
 const ERC20ABI = [
   "function decimals() view returns (uint8)",
-  "function balanceOf(address owner) view returns (uint256)",
-  "function approve(address spender, uint256 amount) returns (bool)",
-  "function allowance(address owner, address spender) view returns (uint256)"
+  "function balanceOf(address) view returns (uint256)",
+  "function approve(address,uint256) returns (bool)",
+  "function allowance(address,address) view returns (uint256)",
 ];
 
 const ROUTER_ABI = [
@@ -74,7 +74,7 @@ const STAKING_ABI = [
 
 // Utils
 function getFixedSlippage() {
-  return 0.05;
+  return 0.97; // 3% slippage → accept at least 97%
 }
 
 function getRandomAmount(min = 1, max = 3) {
@@ -82,7 +82,7 @@ function getRandomAmount(min = 1, max = 3) {
 }
 
 function getRandomDelay(min, max) {
-  return Math.floor(Math.random() * (max - min + 0.05)) + min;
+  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 function explorerLink(txHash) {
@@ -90,9 +90,9 @@ function explorerLink(txHash) {
 }
 
 async function getTokenBalance(tokenAddress, wallet, decimals) {
-  const tokenContract = new ethers.Contract(tokenAddress, ERC20ABI, wallet);
-  const balance = await tokenContract.balanceOf(wallet.address);
-  return parseFloat(ethers.formatUnits(balance, decimals));
+  const token = new ethers.Contract(tokenAddress, ERC20ABI, wallet);
+  const raw = await token.balanceOf(wallet.address);
+  return Number(ethers.formatUnits(raw, decimals));
 }
 
 async function showAllBalances(wallet) {
@@ -110,45 +110,48 @@ async function showAllBalances(wallet) {
   logger.info(`WBTC:   ${wbtc}`);
 }
 
-async function ensureApproval(tokenAddress, spender, amount, wallet, decimals) {
-  const tokenContract = new ethers.Contract(tokenAddress, ERC20ABI, wallet);
-  const allowance = await tokenContract.allowance(wallet.address, spender);
-  if (BigInt(allowance) < BigInt(amount)) {
-    logger.loading(`Approving ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`);
-    const tx = await tokenContract.approve(spender, ethers.MaxUint256);
+async function ensureApproval(token, spender, amount, wallet, decimals) {
+  const contract = new ethers.Contract(token, ERC20ABI, wallet);
+  const allowance = await contract.allowance(wallet.address, spender);
+  if (allowance < amount) {
+    logger.loading(`Approving ${token.slice(0, 6)}...`);
+    const tx = await contract.approve(spender, ethers.MaxUint256);
     await tx.wait();
-    logger.success(`Approved for ${spender.slice(0, 6)}...${spender.slice(-4)}`);
+    logger.success(`Approval complete for ${spender.slice(0, 6)}...`);
   }
 }
-
-// Core Bot
 
 async function swapTokens(isUsdcToR2, amount) {
   const provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
   const router = new ethers.Contract(CONFIG.CONTRACTS.ROUTER, ROUTER_ABI, wallet);
 
-  const slippage = getFixedSlippage();
-  const path = isUsdcToR2 ? [CONFIG.TOKENS.USDC, CONFIG.TOKENS.R2] : [CONFIG.TOKENS.R2, CONFIG.TOKENS.USDC];
+  const path = isUsdcToR2
+    ? [CONFIG.TOKENS.USDC, CONFIG.TOKENS.R2]
+    : [CONFIG.TOKENS.R2, CONFIG.TOKENS.USDC];
 
   const decimals = isUsdcToR2 ? 6 : 18;
   const amountIn = ethers.parseUnits(amount.toString(), decimals);
-  const amountOutMin = ethers.parseUnits((amount * slippage).toFixed(decimals), decimals);
+  const amountOutMin = amountIn * BigInt(Math.floor(getFixedSlippage() * 100)) / 100n;
 
   await ensureApproval(path[0], CONFIG.CONTRACTS.ROUTER, amountIn, wallet, decimals);
 
-  const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-  const direction = isUsdcToR2 ? "USDC→R2" : "R2→USDC";
-  logger.swap(`Swapping ${amount} ${direction} (slippage 3%)`);
+  const deadline = Math.floor(Date.now() / 1000) + 60 * 10;
+  logger.swap(`Swapping ${amount} ${isUsdcToR2 ? 'USDC→R2' : 'R2→USDC'}`);
 
   try {
-    const tx = await router.swapExactTokensForTokens(amountIn, amountOutMin, path, wallet.address, deadline, { gasLimit: 500000 });
+    const tx = await router.swapExactTokensForTokens(
+      amountIn,
+      amountOutMin,
+      path,
+      wallet.address,
+      deadline,
+      { gasLimit: 500_000 }
+    );
     await tx.wait();
-    logger.swapSuccess(`Swap completed: ${explorerLink(tx.hash)}`);
-    return true;
-  } catch (error) {
-    logger.error(`Swap failed: ${error.message}`);
-    return false;
+    logger.swapSuccess(`Swap complete: ${explorerLink(tx.hash)}`);
+  } catch (e) {
+    logger.error(`Swap failed: ${e.message}`);
   }
 }
 
@@ -157,26 +160,33 @@ async function addLiquidity(amount) {
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
   const router = new ethers.Contract(CONFIG.CONTRACTS.ROUTER, ROUTER_ABI, wallet);
 
-  const slippage = getFixedSlippage();
-  const amountUsdc = ethers.parseUnits(amount.toString(), 6);
-  const amountR2 = ethers.parseUnits(amount.toString(), 18);
-  const minAmountUsdc = ethers.parseUnits((amount * slippage).toFixed(6), 6);
-  const minAmountR2 = ethers.parseUnits((amount * slippage).toFixed(18), 18);
+  const usdcAmount = ethers.parseUnits(amount.toString(), 6);
+  const r2Amount = ethers.parseUnits(amount.toString(), 18);
+  const minUsdc = usdcAmount * BigInt(Math.floor(getFixedSlippage() * 100)) / 100n;
+  const minR2 = r2Amount * BigInt(Math.floor(getFixedSlippage() * 100)) / 100n;
 
-  await ensureApproval(CONFIG.TOKENS.USDC, CONFIG.CONTRACTS.ROUTER, amountUsdc, wallet, 6);
-  await ensureApproval(CONFIG.TOKENS.R2, CONFIG.CONTRACTS.ROUTER, amountR2, wallet, 18);
+  await ensureApproval(CONFIG.TOKENS.USDC, CONFIG.CONTRACTS.ROUTER, usdcAmount, wallet, 6);
+  await ensureApproval(CONFIG.TOKENS.R2, CONFIG.CONTRACTS.ROUTER, r2Amount, wallet, 18);
 
-  const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-  logger.liquidity(`Adding liquidity (${amount} USDC & R2)`);
+  const deadline = Math.floor(Date.now() / 1000) + 60 * 10;
+  logger.liquidity(`Adding Liquidity: ${amount} USDC & R2`);
 
   try {
-    const tx = await router.addLiquidity(CONFIG.TOKENS.USDC, CONFIG.TOKENS.R2, amountUsdc, amountR2, minAmountUsdc, minAmountR2, wallet.address, deadline, { gasLimit: 700000 });
+    const tx = await router.addLiquidity(
+      CONFIG.TOKENS.USDC,
+      CONFIG.TOKENS.R2,
+      usdcAmount,
+      r2Amount,
+      minUsdc,
+      minR2,
+      wallet.address,
+      deadline,
+      { gasLimit: 700_000 }
+    );
     await tx.wait();
     logger.liquiditySuccess(`Liquidity added: ${explorerLink(tx.hash)}`);
-    return true;
-  } catch (error) {
-    logger.error(`Add liquidity failed: ${error.message}`);
-    return false;
+  } catch (e) {
+    logger.error(`Add liquidity failed: ${e.message}`);
   }
 }
 
@@ -185,10 +195,10 @@ async function getUserInput() {
   logger.banner();
 
   logger.info("Konfigurasi parameter bot:");
-  const swapTimes = parseInt(prompt("Berapa kali swap USDC↔R2? ")) || 0;
-  const lpTimes = parseInt(prompt("Berapa kali add liquidity? ")) || 0;
-  const minDelay = parseInt(prompt("Delay minimum antar aksi (ms): ")) || 5000;
-  const maxDelay = parseInt(prompt("Delay maksimum antar aksi (ms): ")) || 15000;
+  const swapTimes = parseInt(prompt("How many times swap USDC↔R2? ")) || 0;
+  const lpTimes = parseInt(prompt("How many times add liquidity? ")) || 0;
+  const minDelay = parseInt(prompt("Minimum delay between actions (ms): ")) || 5000;
+  const maxDelay = parseInt(prompt("Maximum delay between actions (ms): ")) || 15000;
 
   const provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
@@ -201,13 +211,13 @@ async function runSwapSequence(times, minDelay, maxDelay) {
   let isUsdcToR2 = true;
   for (let i = 1; i <= times; i++) {
     const amount = getRandomAmount();
-    logger.step(`Swap #${i}: ${amount} tokens (${isUsdcToR2 ? 'USDC→R2' : 'R2→USDC'})`);
+    logger.step(`Swap #${i}: ${amount}`);
     await swapTokens(isUsdcToR2, amount);
     isUsdcToR2 = !isUsdcToR2;
 
     if (i < times) {
       const delay = getRandomDelay(minDelay, maxDelay);
-      logger.loading(`Menunggu ${delay / 1000} detik...`);
+      logger.loading(`Tunggu ${delay / 1000} detik...`);
       await new Promise(res => setTimeout(res, delay));
     }
   }
@@ -216,12 +226,12 @@ async function runSwapSequence(times, minDelay, maxDelay) {
 async function runLiquiditySequence(times, minDelay, maxDelay) {
   for (let i = 1; i <= times; i++) {
     const amount = getRandomAmount();
-    logger.step(`Add Liquidity #${i}: ${amount}`);
+    logger.step(`Liquidity #${i}: ${amount}`);
     await addLiquidity(amount);
 
     if (i < times) {
       const delay = getRandomDelay(minDelay, maxDelay);
-      logger.loading(`Menunggu ${delay / 1000} detik...`);
+      logger.loading(`Tunggu ${delay / 1000} detik...`);
       await new Promise(res => setTimeout(res, delay));
     }
   }
@@ -252,23 +262,20 @@ async function main() {
       logger.info("═════════════════════════════════════");
 
       if (swapTimes > 0) {
-        logger.info("\nMulai swap...");
         await runSwapSequence(swapTimes, minDelay, maxDelay);
       }
 
       if (lpTimes > 0) {
-        logger.info("\nMulai add liquidity...");
         await runLiquiditySequence(lpTimes, minDelay, maxDelay);
       }
 
-      logger.success("\n✅ Bot cycle selesai!");
-      logger.loading("Menunggu cycle berikutnya...");
+      logger.success("✅ Cycle Completed!");
       await countdown(cycleDelay);
     }
-  } catch (error) {
-    logger.error(`Fatal error: ${error.message}`);
+  } catch (e) {
+    logger.error(`Fatal error: ${e.message}`);
     process.exit(1);
   }
 }
 
-main().catch(console.error);
+main();
