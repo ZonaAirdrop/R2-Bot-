@@ -25,11 +25,10 @@ const logger = {
   liquiditySuccess: (msg) => console.log(`${colors.green}[✅] ${msg}${colors.reset}`),
   stake: (msg) => console.log(`${colors.cyan}[🔄] ${msg}${colors.reset}`),
   stakeSuccess: (msg) => console.log(`${colors.green}[🔒] ${msg}${colors.reset}`),
-  balance: (msg) => console.log(`${colors.cyan}[💰] ${msg}${colors.reset}`),
   banner: () => {
     console.log(`${colors.cyan}${colors.bold}`);
     console.log('-------------------------------------------------');
-    console.log(' R2 DEX Bot - USDC/R2 + Staking + Balance Check');
+    console.log(' R2 DEX Bot - USDC/R2 + Staking');
     console.log('-------------------------------------------------');
     console.log(`${colors.reset}\n`);
   },
@@ -59,61 +58,270 @@ const ERC20_ABI = [
   "function allowance(address owner, address spender) view returns (uint256)"
 ];
 
-// ... (ABI lainnya tetap sama seperti sebelumnya)
+const ROUTER_ABI = [
+  {
+    "inputs": [
+      {"internalType":"uint256","name":"amountIn","type":"uint256"},
+      {"internalType":"uint256","name":"amountOutMin","type":"uint256"},
+      {"internalType":"address[]","name":"path","type":"address[]"},
+      {"internalType":"address","name":"to","type":"address"},
+      {"internalType":"uint256","name":"deadline","type":"uint256"}
+    ],
+    "name": "swapExactTokensForTokens",
+    "outputs": [{"internalType":"uint256[]","name":"amounts","type":"uint256[]"}],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType":"address","name":"tokenA","type":"address"},
+      {"internalType":"address","name":"tokenB","type":"address"},
+      {"internalType":"uint256","name":"amountADesired","type":"uint256"},
+      {"internalType":"uint256","name":"amountBDesired","type":"uint256"},
+      {"internalType":"uint256","name":"amountAMin","type":"uint256"},
+      {"internalType":"uint256","name":"amountBMin","type":"uint256"},
+      {"internalType":"address","name":"to","type":"address"},
+      {"internalType":"uint256","name":"deadline","type":"uint256"}
+    ],
+    "name": "addLiquidity",
+    "outputs": [
+      {"internalType":"uint256","name":"amountA","type":"uint256"},
+      {"internalType":"uint256","name":"amountB","type":"uint256"},
+      {"internalType":"uint256","name":"liquidity","type":"uint256"}
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+];
+
+const STAKING_ABI = [
+  {
+    "inputs": [
+      {"internalType":"uint256","name":"amount","type":"uint256"}
+    ],
+    "name": "stake",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+];
 
 // Helper Functions
+function getRandomAmount(min = 5, max = 10) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function getRandomSlippage(min = 0.5, max = 1.5) {
+  return 1 - (Math.random() * (max - min) + min) / 100;
+}
+
+function getRandomDelay(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function explorerLink(txHash) {
+  return `https://sepolia.etherscan.io/tx/${txHash}`;
+}
+
 async function getTokenBalance(tokenAddress, wallet, decimals) {
   try {
-    if (tokenAddress === 'ETH') {
-      const balance = await wallet.getBalance();
-      return parseFloat(ethers.formatUnits(balance, 18));
-    }
-    
     const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, wallet);
     const balance = await tokenContract.balanceOf(wallet.address);
-    return parseFloat(ethers.formatUnits(balance, decimals));
+    const formattedBalance = parseFloat(ethers.formatUnits(balance, decimals));
+    return formattedBalance;
   } catch (error) {
-    logger.error(`Failed to get balance: ${error.message}`);
+    logger.error(`Failed to get balance for token ${tokenAddress}: ${error.message}`);
     return 0;
   }
 }
 
-// Tambahkan fungsi untuk menampilkan semua balance
-async function showAllBalances(wallet) {
-  logger.balance("Checking all balances...");
-  
-  // ETH Balance
-  const ethBalance = await getTokenBalance('ETH', wallet, 18);
-  logger.balance(`ETH Balance: ${ethBalance.toFixed(6)}`);
-
-  // Token Balances
-  const tokens = [
-    { symbol: 'R2', address: CONFIG.TOKENS.R2, decimals: 18 },
-    { symbol: 'USDC', address: CONFIG.TOKENS.USDC, decimals: 6 },
-    { symbol: 'R2USD', address: CONFIG.TOKENS.R2USD, decimals: 6 },
-    { symbol: 'WBTC', address: CONFIG.TOKENS.WBTC, decimals: 8 },
-    { symbol: 'RWBTC', address: CONFIG.TOKENS.RWBTC, decimals: 8 }
-  ];
-
-  for (const token of tokens) {
-    const balance = await getTokenBalance(token.address, wallet, token.decimals);
-    logger.balance(`${token.symbol} Balance: ${balance.toFixed(token.decimals)}`);
+async function ensureApproval(tokenAddress, spender, amount, wallet, decimals) {
+  try {
+    const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, wallet);
+    const allowance = await tokenContract.allowance(wallet.address, spender);
+    
+    if (BigInt(allowance) < BigInt(amount)) {
+      logger.loading(`Approving ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`);
+      const tx = await tokenContract.approve(spender, ethers.MaxUint256);
+      await tx.wait();
+      logger.success(`Approved for ${spender.slice(0, 6)}...${spender.slice(-4)}`);
+    }
+  } catch (error) {
+    logger.error(`Approval failed: ${error.message}`);
+    throw error;
   }
 }
 
-// ... (fungsi-fungsi helper lainnya tetap sama)
+// Core Functions
+async function swapTokens(isUsdcToR2, amount) {
+  const provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
+  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+  const router = new ethers.Contract(CONFIG.CONTRACTS.ROUTER, ROUTER_ABI, wallet);
+
+  const slippage = getRandomSlippage();
+  const path = isUsdcToR2 
+    ? [CONFIG.TOKENS.USDC, CONFIG.TOKENS.R2] 
+    : [CONFIG.TOKENS.R2, CONFIG.TOKENS.USDC];
+
+  const decimals = isUsdcToR2 ? 6 : 18;
+  const amountIn = ethers.parseUnits(amount.toString(), decimals);
+  const amountOutMin = ethers.parseUnits((amount * slippage).toFixed(decimals), decimals);
+
+  await ensureApproval(path[0], CONFIG.CONTRACTS.ROUTER, amountIn, wallet, decimals);
+
+  const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+  const direction = isUsdcToR2 ? "USDC→R2" : "R2→USDC";
+  
+  logger.swap(`Swapping ${amount} ${direction} (slippage ${((1-slippage)*100).toFixed(2)}%)`);
+  
+  try {
+    const tx = await router.swapExactTokensForTokens(
+      amountIn,
+      amountOutMin,
+      path,
+      wallet.address,
+      deadline,
+      { gasLimit: 500000 }
+    );
+    await tx.wait();
+    logger.swapSuccess(`Swap completed: ${explorerLink(tx.hash)}`);
+    return true;
+  } catch (error) {
+    logger.error(`Swap failed: ${error.message}`);
+    return false;
+  }
+}
+
+async function addLiquidity(amount) {
+  const provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
+  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+  const router = new ethers.Contract(CONFIG.CONTRACTS.ROUTER, ROUTER_ABI, wallet);
+
+  const slippage = getRandomSlippage();
+  const amountUsdc = ethers.parseUnits(amount.toString(), 6);
+  const amountR2 = ethers.parseUnits(amount.toString(), 18);
+  const minAmountUsdc = ethers.parseUnits((amount * slippage).toFixed(6), 6);
+  const minAmountR2 = ethers.parseUnits((amount * slippage).toFixed(18), 18);
+
+  await ensureApproval(CONFIG.TOKENS.USDC, CONFIG.CONTRACTS.ROUTER, amountUsdc, wallet, 6);
+  await ensureApproval(CONFIG.TOKENS.R2, CONFIG.CONTRACTS.ROUTER, amountR2, wallet, 18);
+
+  const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+  logger.liquidity(`Adding liquidity (${amount} USDC & R2)`);
+
+  try {
+    const tx = await router.addLiquidity(
+      CONFIG.TOKENS.USDC,
+      CONFIG.TOKENS.R2,
+      amountUsdc,
+      amountR2,
+      minAmountUsdc,
+      minAmountR2,
+      wallet.address,
+      deadline,
+      { gasLimit: 700000 }
+    );
+    await tx.wait();
+    logger.liquiditySuccess(`Liquidity added: ${explorerLink(tx.hash)}`);
+    return true;
+  } catch (error) {
+    logger.error(`Add liquidity failed: ${error.message}`);
+    return false;
+  }
+}
+
+async function stakeTokens(tokenType, amount) {
+  const provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
+  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+
+  let tokenAddress, stakingAddress, decimals;
+  
+  if (tokenType === 'R2USD') {
+    tokenAddress = CONFIG.TOKENS.R2USD;
+    stakingAddress = CONFIG.TOKENS.SR2USD;
+    decimals = 6;
+  } else { // WBTC
+    tokenAddress = CONFIG.TOKENS.WBTC;
+    stakingAddress = CONFIG.CONTRACTS.WBTC_STAKING_ROUTER;
+    decimals = 8;
+  }
+
+  const stakingContract = new ethers.Contract(stakingAddress, STAKING_ABI, wallet);
+  const amountWei = ethers.parseUnits(amount.toString(), decimals);
+
+  // Check balance
+  const balance = await getTokenBalance(tokenAddress, wallet, decimals);
+  logger.info(`Your ${tokenType} Balance: ${balance.toFixed(decimals)}`);
+  
+  if (balance < amount) {
+    logger.error(`Insufficient balance. Available: ${balance.toFixed(decimals)} ${tokenType}`);
+    return false;
+  }
+
+  await ensureApproval(tokenAddress, stakingAddress, amountWei, wallet, decimals);
+
+  logger.stake(`Staking ${amount} ${tokenType}`);
+  
+  try {
+    const tx = await stakingContract.stake(amountWei, { gasLimit: 300000 });
+    await tx.wait();
+    logger.stakeSuccess(`Staking completed: ${explorerLink(tx.hash)}`);
+    return true;
+  } catch (error) {
+    logger.error(`Staking failed: ${error.message}`);
+    return false;
+  }
+}
+
+// Bot Operations
+async function runSwapSequence(times, minDelay, maxDelay) {
+  let isUsdcToR2 = true;
+  for (let i = 1; i <= times; i++) {
+    const amount = getRandomAmount();
+    logger.step(`Swap #${i}: ${amount} tokens (${isUsdcToR2 ? 'USDC→R2' : 'R2→USDC'})`);
+    
+    await swapTokens(isUsdcToR2, amount);
+    isUsdcToR2 = !isUsdcToR2;
+
+    if (i < times) {
+      const delay = getRandomDelay(minDelay, maxDelay);
+      logger.loading(`Waiting ${delay / 1000} seconds...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
+async function runLiquiditySequence(times, minDelay, maxDelay) {
+  for (let i = 1; i <= times; i++) {
+    const amount = getRandomAmount();
+    logger.step(`Liquidity #${i}: ${amount} tokens each`);
+    
+    await addLiquidity(amount);
+
+    if (i < times) {
+      const delay = getRandomDelay(minDelay, maxDelay);
+      logger.loading(`Waiting ${delay / 1000} seconds...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
+async function runStakingSequence(r2usdAmount, wbtcAmount) {
+  if (r2usdAmount > 0) {
+    logger.step(`Staking R2USD: ${r2usdAmount} tokens`);
+    await stakeTokens('R2USD', r2usdAmount);
+  }
+  
+  if (wbtcAmount > 0) {
+    logger.step(`Staking WBTC: ${wbtcAmount} tokens`);
+    await stakeTokens('WBTC', wbtcAmount);
+  }
+}
 
 // User Interface
 async function getUserInput() {
   const prompt = promptSync({ sigint: true });
   logger.banner();
-
-  const provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-
-  // Tampilkan semua balance terlebih dahulu
-  await showAllBalances(wallet);
-  console.log("\n");
 
   logger.info("Please configure your bot parameters:");
   
@@ -127,13 +335,34 @@ async function getUserInput() {
   logger.info("│      STAKING SETUP    │");
   logger.info("└───────────────────────┘");
   
+  const provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
+  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+
+  // Display balances with proper formatting
+  const r2usdBalance = await getTokenBalance(CONFIG.TOKENS.R2USD, wallet, 6);
+  logger.info(`Your R2USD Balance: ${r2usdBalance.toFixed(6)}`);
   const r2usdAmount = parseFloat(prompt("Amount of R2USD to stake (0 to skip): ")) || 0;
+
+  const wbtcBalance = await getTokenBalance(CONFIG.TOKENS.WBTC, wallet, 8);
+  logger.info(`Your WBTC Balance: ${wbtcBalance.toFixed(8)}`);
   const wbtcAmount = parseFloat(prompt("Amount of WBTC to stake (0 to skip): ")) || 0;
 
   return { swapTimes, lpTimes, minDelay, maxDelay, r2usdAmount, wbtcAmount };
 }
 
-// ... (fungsi-fungsi lainnya tetap sama seperti sebelumnya)
+function countdown(seconds) {
+  return new Promise(resolve => {
+    const interval = setInterval(() => {
+      process.stdout.write(`\r${colors.cyan}⏳ Next cycle in: ${seconds}s ${colors.reset}`);
+      seconds--;
+      if (seconds < 0) {
+        clearInterval(interval);
+        process.stdout.write("\n");
+        resolve();
+      }
+    }, 1000);
+  });
+}
 
 // Main Bot Loop
 async function main() {
@@ -145,12 +374,6 @@ async function main() {
       logger.info("\n══════════════════════════════════════════════");
       logger.info("            STARTING NEW BOT CYCLE            ");
       logger.info("══════════════════════════════════════════════");
-
-      // Tampilkan balance di awal setiap cycle
-      const provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
-      const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-      await showAllBalances(wallet);
-      console.log("\n");
 
       // Run staking first if amounts are specified
       if (r2usdAmount > 0 || wbtcAmount > 0) {
