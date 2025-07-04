@@ -111,8 +111,8 @@ function getRandomAmount(min = 2, max = 5) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function getRandomSlippage(min = 0.5, max = 0.1) {
-  return 1 - (Math.random() * (max - min) + min) / 100;
+function getRandomSlippage(min = 0.5, max = 1) {
+  return 1 - (Math.random() * (max - min) + min) / 10;
 }
 
 function getRandomDelay(min, max) {
