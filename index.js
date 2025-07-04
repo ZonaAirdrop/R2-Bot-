@@ -210,15 +210,20 @@ async function mainLoop() {
     }
 
     // Lanjut ke swap dan liquidity
-    logger.info("--- Starting Swap Sequence ---");
-    await runSwapBolakBalik(
-      swapTimes,
-      swapSepoliaR2,
-      "USDC ↔ R2 Swap",
-      minDelay,
-      maxDelay
-    );
-
+    async function runSwapBolakBalik(times, swapFunction, label, minDelay, maxDelay) {
+  for (let i = 0; i < times; i++) {
+    logger.info(`[${label}] - Swap ke ${i + 1} dari ${times}`);
+    try {
+      await swapFunction(); // swap USDC ↔ R2
+      const delay = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
+      logger.info(`[${label}] - Delay ${delay}ms`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    } catch (err) {
+      logger.error(`[${label}] - Swap gagal: ${err.message}`);
+    }
+  }
+}
+    
     logger.info("--- Starting Liquidity Sequence ---");
     await runAction(
       lpTimes,
