@@ -39,18 +39,7 @@ const logger = {
 const CONFIG = {
   RPC_URL: process.env.RPC_URL,
   TOKENS: {
-    USDC: process.env.USDC_ADDRESS,
-    R2: process.env.R2_ADDRESS,
-    R2USD: process.env.R2USD_ADDRESS,
-    WBTC: process.env.WBTC_ADDRESS
-  },
-  CONTRACTS: {
-    ROUTER: "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3",
-    SR2USD: "0x006cbf409ca275ba022111db32bdae054a97d488", // decimal 6
-    RWBTC: "0x4f5b54d4AF2568cefafA73bB062e5d734b55AA05", // decimal 8
-    WBTC_STAKING: "0x23b2615d783e16f14b62efa125306c7c69b4941a"
-  }
-};
+    
 
 // ABIs
 const ERC20_ABI = [
