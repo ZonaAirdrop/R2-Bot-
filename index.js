@@ -87,6 +87,12 @@ const ROUTER_ABI = [
   }
 ];
 
+// Setting khusus swap R2USD - USDC Sepolia
+const R2USD_USDC_SEPOLIA_SETTINGS = {
+  minSwap: 25,      // minimal swap R2USD/USDC Sepolia
+  slippage: 0.98    // slippage: 2%, berarti minimal amountOut = 98% dari input
+};
+
 function getRandomAmount() {
   return Math.floor(Math.random() * 4) + 10;
 }
@@ -108,10 +114,17 @@ async function ensureApproval(tokenAddress, spender, amount, wallet, decimals) {
   }
 }
 
+// Bagian swapSepolia diubah agar minSwap & slippage bisa diatur
 async function swapSepolia(isUsdcToR2usd, amount) {
   const config = SEPOLIA_CONFIG;
+  const { minSwap, slippage } = R2USD_USDC_SEPOLIA_SETTINGS;
   const provider = new ethers.JsonRpcProvider(config.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+
+  if (amount < minSwap) {
+    logger.error(`Minimal swap adalah ${minSwap}, input: ${amount}`);
+    return;
+  }
 
   if (isUsdcToR2usd) {
     const amountWei = ethers.parseUnits(amount.toString(), 6);
@@ -136,7 +149,7 @@ async function swapSepolia(isUsdcToR2usd, amount) {
     const amountWei = ethers.parseUnits(amount.toString(), 6);
     await ensureApproval(config.R2USD_ADDRESS, config.ROUTER_R2USD_TO_USDC, amountWei, wallet, 6);
     logger.swap(`Mulai swap R2USD → USDC sebesar ${amount} token...`);
-    const slippage = 1;
+    // Slippage: minDy = amount * slippage
     const minDy = ethers.parseUnits((parseFloat(amount) * slippage).toFixed(6), 6);
     const methodId = "0x3df02124";
     const data = ethers.concat([
@@ -181,6 +194,7 @@ async function addLpR2Sepolia(amount) {
   logger.liquiditySuccess(`Add Liquidity selesai: ${explorerLink(tx.hash)}`);
 }
 
+// BAGIAN DI BAWAH JANGAN DIUBAH - SUDAH WORK
 async function swapSepoliaR2(isUsdcToR2, amount) {
   const config = SEPOLIA_R2_CONFIG;
   const provider = new ethers.JsonRpcProvider(config.RPC_URL);
@@ -246,6 +260,7 @@ async function addLpSepoliaR2(amount) {
   logger.liquiditySuccess(`Add Liquidity selesai: ${explorerLink(tx.hash)}`);
 }
 
+// Utility for running swap & LP bolak-balik
 async function runSwapBolakBalik(times, fn, desc, minDelay, maxDelay) {
   let isFirstDirection = true;
   for (let i = 1; i <= times; i++) {
