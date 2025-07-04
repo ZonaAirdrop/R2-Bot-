@@ -89,8 +89,8 @@ const ROUTER_ABI = [
 
 // Setting khusus swap R2USD - USDC Sepolia
 const R2USD_USDC_SEPOLIA_SETTINGS = {
-  minSwap: 0.02,      // minimal swap R2USD/USDC Sepolia
-  slippage: 0.1    // slippage: 2%, berarti minimal amountOut = 98% dari input
+  minSwap: 0.00001,      // minimal swap R2USD/USDC Sepolia
+  slippage: 0.001    // slippage: 2%, berarti minimal amountOut = 98% dari input
 };
 
 function getRandomAmount() {
