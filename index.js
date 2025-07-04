@@ -93,12 +93,9 @@ const R2USD_USDC_SEPOLIA_SETTINGS = {
   slippage: 0.001        // slippage: 0.1% (0.001 = 0.1%)
 };
 
+// Selalu return 0.00001 (bukan random)
 function getRandomAmount() {
-  // Pastikan random amount >= minSwap
-  const min = R2USD_USDC_SEPOLIA_SETTINGS.minSwap;
-  const rand = Math.random() * (4 - min) + min;
-  // 6 desimal presisi, sesuai USDC/R2USD
-  return Math.round(rand * 1e6) / 1e6;
+  return 0.00001;
 }
 function getRandomDelay(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -137,7 +134,7 @@ async function swapSepolia(isUsdcToR2usd, amount) {
     // Slippage: minOut = amount * (1 - slippage)
     const minOut = ethers.parseUnits((parseFloat(amount) * (1 - slippage)).toFixed(6), 6);
 
-    // Gantilah method dan data sesuai kebutuhan router Anda. Jika router Anda mendukung UniswapV2:
+    // UniswapV2-style router
     const path = [config.USDC_ADDRESS, config.R2USD_ADDRESS];
     const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
     const router = new ethers.Contract(config.ROUTER_USDC_TO_R2USD, ROUTER_ABI, wallet);
@@ -157,7 +154,6 @@ async function swapSepolia(isUsdcToR2usd, amount) {
     // Slippage: minOut = amount * (1 - slippage)
     const minOut = ethers.parseUnits((parseFloat(amount) * (1 - slippage)).toFixed(6), 6);
 
-    // Gantilah method dan data sesuai kebutuhan router Anda. Jika router Anda mendukung UniswapV2:
     const path = [config.R2USD_ADDRESS, config.USDC_ADDRESS];
     const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
     const router = new ethers.Contract(config.ROUTER_R2USD_TO_USDC, ROUTER_ABI, wallet);
