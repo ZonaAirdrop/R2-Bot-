@@ -100,8 +100,8 @@ function getRandomAmount(min = 1, max = 3) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-const slippage = 0.0097;
-
+function getRandomSlippage(min = 0.96, max = 0.97) {
+  return (Math.random() * (max - min) + min) / 100;
 }
 
 function getRandomDelay(min, max) {
