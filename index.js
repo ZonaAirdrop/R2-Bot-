@@ -34,20 +34,41 @@ const logger = {
   },
 };
 
-// Konfigurasi Jaringan
+// ──────────────────────────────────────────────
+// Chain & Contract Config
+// ──────────────────────────────────────────────
+
 const SEPOLIA_R2_CONFIG = {
   RPC_URL: "https://ethereum-sepolia-rpc.publicnode.com/",
   R2_ADDRESS: "0xb816bB88f836EA75Ca4071B46FF285f690C43bb7",
   USDC_ADDRESS: "0x8BEbFCBe5468F146533C182dF3DFbF5ff9BE00E2",
   ROUTER_ADDRESS: "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3",
-  
-  // Staking Contracts
+
   R2USD_ADDRESS: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",
-  SR2USD_ADDRESS: "0x006cbf409ca275ba022111db32bdae054a97d488", // decimal 6
+  SR2USD_ADDRESS: "0x006cbf409ca275ba022111db32bdae054a97d488",
   WBTC_ADDRESS: "0x4f5b54d4AF2568cefafA73bB062e5d734b55AA05",
-  RWBTC_ADDRESS: "0xDcb5C62EaC28d1eFc7132ad99F2Bd81973041D14", // decimal 8
+  RWBTC_ADDRESS: "0xDcb5C62EaC28d1eFc7132ad99F2Bd81973041D14",
   WBTC_STAKING_ROUTER: "0x23b2615d783e16f14b62efa125306c7c69b4941a",
-];
+};
+
+const CONFIG = {
+  RPC_URL: SEPOLIA_R2_CONFIG.RPC_URL,
+  CONTRACTS: {
+    ROUTER: SEPOLIA_R2_CONFIG.ROUTER_ADDRESS,
+    SR2USD: SEPOLIA_R2_CONFIG.SR2USD_ADDRESS,
+    WBTC_STAKING: SEPOLIA_R2_CONFIG.WBTC_STAKING_ROUTER,
+  },
+  TOKENS: {
+    USDC: SEPOLIA_R2_CONFIG.USDC_ADDRESS,
+    R2: SEPOLIA_R2_CONFIG.R2_ADDRESS,
+    R2USD: SEPOLIA_R2_CONFIG.R2USD_ADDRESS,
+    WBTC: SEPOLIA_R2_CONFIG.WBTC_ADDRESS,
+  }
+};
+
+// ──────────────────────────────────────────────
+// ABIs
+// ──────────────────────────────────────────────
 
 const ERC20ABI = [
   "function decimals() view returns (uint8)",
@@ -56,11 +77,14 @@ const ERC20ABI = [
   "function allowance(address owner, address spender) view returns (uint256)"
 ];
 
+const ROUTER_ABI = [
+  "function swapExactTokensForTokens(uint256,uint256,address[],address,uint256) returns (uint256[])",
+  "function addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint256) returns (uint256,uint256,uint256)"
+];
+
 const STAKING_ABI = [
   {
-    "inputs": [
-      {"internalType":"uint256","name":"amount","type":"uint256"}
-    ],
+    "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],
     "name": "stake",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -68,7 +92,10 @@ const STAKING_ABI = [
   }
 ];
 
-// Helper Functions
+// ──────────────────────────────────────────────
+// Helpers
+// ──────────────────────────────────────────────
+
 function getRandomAmount(min = 5, max = 10) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -86,15 +113,14 @@ function explorerLink(txHash) {
 }
 
 async function getTokenBalance(tokenAddress, wallet, decimals) {
-  const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, wallet);
+  const tokenContract = new ethers.Contract(tokenAddress, ERC20ABI, wallet);
   const balance = await tokenContract.balanceOf(wallet.address);
   return parseFloat(ethers.formatUnits(balance, decimals));
 }
 
 async function ensureApproval(tokenAddress, spender, amount, wallet, decimals) {
-  const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, wallet);
+  const tokenContract = new ethers.Contract(tokenAddress, ERC20ABI, wallet);
   const allowance = await tokenContract.allowance(wallet.address, spender);
-  
   if (BigInt(allowance) < BigInt(amount)) {
     logger.loading(`Approving ${tokenAddress.slice(0, 6)}...${tokenAddress.slice(-4)}`);
     const tx = await tokenContract.approve(spender, ethers.MaxUint256);
@@ -103,16 +129,17 @@ async function ensureApproval(tokenAddress, spender, amount, wallet, decimals) {
   }
 }
 
-// Core Functions
+// ──────────────────────────────────────────────
+// Core Bot Functions
+// ──────────────────────────────────────────────
+
 async function swapTokens(isUsdcToR2, amount) {
   const provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
   const router = new ethers.Contract(CONFIG.CONTRACTS.ROUTER, ROUTER_ABI, wallet);
 
   const slippage = getRandomSlippage();
-  const path = isUsdcToR2 
-    ? [CONFIG.TOKENS.USDC, CONFIG.TOKENS.R2] 
-    : [CONFIG.TOKENS.R2, CONFIG.TOKENS.USDC];
+  const path = isUsdcToR2 ? [CONFIG.TOKENS.USDC, CONFIG.TOKENS.R2] : [CONFIG.TOKENS.R2, CONFIG.TOKENS.USDC];
 
   const decimals = isUsdcToR2 ? 6 : 18;
   const amountIn = ethers.parseUnits(amount.toString(), decimals);
@@ -122,18 +149,10 @@ async function swapTokens(isUsdcToR2, amount) {
 
   const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
   const direction = isUsdcToR2 ? "USDC→R2" : "R2→USDC";
-  
-  logger.swap(`Swapping ${amount} ${direction} (slippage ${((1-slippage)*100).toFixed(2)}%)`);
-  
+  logger.swap(`Swapping ${amount} ${direction} (slippage ${((1 - slippage) * 100).toFixed(2)}%)`);
+
   try {
-    const tx = await router.swapExactTokensForTokens(
-      amountIn,
-      amountOutMin,
-      path,
-      wallet.address,
-      deadline,
-      { gasLimit: 500000 }
-    );
+    const tx = await router.swapExactTokensForTokens(amountIn, amountOutMin, path, wallet.address, deadline, { gasLimit: 500000 });
     await tx.wait();
     logger.swapSuccess(`Swap completed: ${explorerLink(tx.hash)}`);
     return true;
@@ -161,17 +180,7 @@ async function addLiquidity(amount) {
   logger.liquidity(`Adding liquidity (${amount} USDC & R2)`);
 
   try {
-    const tx = await router.addLiquidity(
-      CONFIG.TOKENS.USDC,
-      CONFIG.TOKENS.R2,
-      amountUsdc,
-      amountR2,
-      minAmountUsdc,
-      minAmountR2,
-      wallet.address,
-      deadline,
-      { gasLimit: 700000 }
-    );
+    const tx = await router.addLiquidity(CONFIG.TOKENS.USDC, CONFIG.TOKENS.R2, amountUsdc, amountR2, minAmountUsdc, minAmountR2, wallet.address, deadline, { gasLimit: 700000 });
     await tx.wait();
     logger.liquiditySuccess(`Liquidity added: ${explorerLink(tx.hash)}`);
     return true;
@@ -186,12 +195,11 @@ async function stakeTokens(tokenType, amount) {
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
   let tokenAddress, stakingAddress, decimals;
-  
   if (tokenType === 'R2USD') {
     tokenAddress = CONFIG.TOKENS.R2USD;
     stakingAddress = CONFIG.CONTRACTS.SR2USD;
     decimals = 6;
-  } else { // WBTC
+  } else {
     tokenAddress = CONFIG.TOKENS.WBTC;
     stakingAddress = CONFIG.CONTRACTS.WBTC_STAKING;
     decimals = 8;
@@ -200,10 +208,9 @@ async function stakeTokens(tokenType, amount) {
   const stakingContract = new ethers.Contract(stakingAddress, STAKING_ABI, wallet);
   const amountWei = ethers.parseUnits(amount.toString(), decimals);
 
-  // Check balance
   const balance = await getTokenBalance(tokenAddress, wallet, decimals);
   logger.info(`Your ${tokenType} Balance: ${balance}`);
-  
+
   if (balance < amount) {
     logger.error(`Insufficient balance. Available: ${balance} ${tokenType}`);
     return false;
@@ -212,7 +219,6 @@ async function stakeTokens(tokenType, amount) {
   await ensureApproval(tokenAddress, stakingAddress, amountWei, wallet, decimals);
 
   logger.stake(`Staking ${amount} ${tokenType}`);
-  
   try {
     const tx = await stakingContract.stake(amountWei, { gasLimit: 300000 });
     await tx.wait();
@@ -224,20 +230,22 @@ async function stakeTokens(tokenType, amount) {
   }
 }
 
-// Bot Operations
+// ──────────────────────────────────────────────
+// Bot Sequences
+// ──────────────────────────────────────────────
+
 async function runSwapSequence(times, minDelay, maxDelay) {
   let isUsdcToR2 = true;
   for (let i = 1; i <= times; i++) {
     const amount = getRandomAmount();
     logger.step(`Swap #${i}: ${amount} tokens (${isUsdcToR2 ? 'USDC→R2' : 'R2→USDC'})`);
-    
     await swapTokens(isUsdcToR2, amount);
     isUsdcToR2 = !isUsdcToR2;
 
     if (i < times) {
       const delay = getRandomDelay(minDelay, maxDelay);
       logger.loading(`Waiting ${delay / 1000} seconds...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise(res => setTimeout(res, delay));
     }
   }
 }
@@ -246,13 +254,12 @@ async function runLiquiditySequence(times, minDelay, maxDelay) {
   for (let i = 1; i <= times; i++) {
     const amount = getRandomAmount();
     logger.step(`Liquidity #${i}: ${amount} tokens each`);
-    
     await addLiquidity(amount);
 
     if (i < times) {
       const delay = getRandomDelay(minDelay, maxDelay);
       logger.loading(`Waiting ${delay / 1000} seconds...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      await new Promise(res => setTimeout(res, delay));
     }
   }
 }
@@ -262,30 +269,32 @@ async function runStakingSequence(r2usdAmount, wbtcAmount) {
     logger.step(`Staking R2USD: ${r2usdAmount} tokens`);
     await stakeTokens('R2USD', r2usdAmount);
   }
-  
+
   if (wbtcAmount > 0) {
     logger.step(`Staking WBTC: ${wbtcAmount} tokens`);
     await stakeTokens('WBTC', wbtcAmount);
   }
 }
 
-// User Interface
+// ──────────────────────────────────────────────
+// UI & Main
+// ──────────────────────────────────────────────
+
 async function getUserInput() {
   const prompt = promptSync({ sigint: true });
   logger.banner();
 
   logger.info("Please configure your bot parameters:");
-  
+
   const swapTimes = parseInt(prompt("Number of swap cycles (USDC↔R2): ")) || 0;
   const lpTimes = parseInt(prompt("Number of liquidity additions: ")) || 0;
   const minDelay = parseInt(prompt("Minimum delay between actions (ms): ")) || 5000;
   const maxDelay = parseInt(prompt("Maximum delay between actions (ms): ")) || 15000;
 
-  // Get staking amounts
   logger.info("\n┌───────────────────────┐");
   logger.info("│      STAKING SETUP    │");
   logger.info("└───────────────────────┘");
-  
+
   const provider = new ethers.JsonRpcProvider(CONFIG.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
 
@@ -314,30 +323,26 @@ function countdown(seconds) {
   });
 }
 
-// Main Bot Loop
 async function main() {
   try {
     const { swapTimes, lpTimes, minDelay, maxDelay, r2usdAmount, wbtcAmount } = await getUserInput();
-    const cycleDelay = 24 * 60 * 60; // 24 hours in seconds
+    const cycleDelay = 24 * 60 * 60;
 
     while (true) {
       logger.info("\n══════════════════════════════════════════════");
       logger.info("            STARTING NEW BOT CYCLE            ");
       logger.info("══════════════════════════════════════════════");
 
-      // Run staking first if amounts are specified
       if (r2usdAmount > 0 || wbtcAmount > 0) {
         logger.info("\nStarting Staking Sequence...");
         await runStakingSequence(r2usdAmount, wbtcAmount);
       }
 
-      // Run swaps if specified
       if (swapTimes > 0) {
         logger.info("\nStarting Swap Sequence...");
         await runSwapSequence(swapTimes, minDelay, maxDelay);
       }
 
-      // Run liquidity if specified
       if (lpTimes > 0) {
         logger.info("\nStarting Liquidity Sequence...");
         await runLiquiditySequence(lpTimes, minDelay, maxDelay);
