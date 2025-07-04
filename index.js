@@ -90,11 +90,15 @@ const ROUTER_ABI = [
 // Setting khusus swap R2USD - USDC Sepolia
 const R2USD_USDC_SEPOLIA_SETTINGS = {
   minSwap: 0.00001,      // minimal swap R2USD/USDC Sepolia
-  slippage: 0.001    // slippage: 2%, berarti minimal amountOut = 98% dari input
+  slippage: 0.001        // slippage: 0.1% (0.001 = 0.1%)
 };
 
 function getRandomAmount() {
-  return Math.floor(Math.random() * 4) + 10;
+  // Pastikan random amount >= minSwap
+  const min = R2USD_USDC_SEPOLIA_SETTINGS.minSwap;
+  const rand = Math.random() * (4 - min) + min;
+  // 6 desimal presisi, sesuai USDC/R2USD
+  return Math.round(rand * 1e6) / 1e6;
 }
 function getRandomDelay(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -130,40 +134,40 @@ async function swapSepolia(isUsdcToR2usd, amount) {
     const amountWei = ethers.parseUnits(amount.toString(), 6);
     await ensureApproval(config.USDC_ADDRESS, config.ROUTER_USDC_TO_R2USD, amountWei, wallet, 6);
     logger.swap(`Mulai swap USDC → R2USD sebesar ${amount} token...`);
-    const methodId = "0x095e7a95";
-    const data = ethers.concat([
-      methodId,
-      ethers.AbiCoder.defaultAbiCoder().encode(
-        ["address", "uint256", "uint256", "uint256", "uint256", "uint256", "uint256"],
-        [wallet.address, amountWei, 0, 0, 0, 0, 0]
-      ),
-    ]);
-    const tx = await wallet.sendTransaction({
-      to: config.ROUTER_USDC_TO_R2USD,
-      data: data,
-      gasLimit: 500000
-    });
+    // Slippage: minOut = amount * (1 - slippage)
+    const minOut = ethers.parseUnits((parseFloat(amount) * (1 - slippage)).toFixed(6), 6);
+
+    // Gantilah method dan data sesuai kebutuhan router Anda. Jika router Anda mendukung UniswapV2:
+    const path = [config.USDC_ADDRESS, config.R2USD_ADDRESS];
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+    const router = new ethers.Contract(config.ROUTER_USDC_TO_R2USD, ROUTER_ABI, wallet);
+    const tx = await router.swapExactTokensForTokens(
+      amountWei,
+      minOut,
+      path,
+      wallet.address,
+      deadline
+    );
     await tx.wait();
     logger.swapSuccess(`Swap selesai: ${explorerLink(tx.hash)}`);
   } else {
     const amountWei = ethers.parseUnits(amount.toString(), 6);
     await ensureApproval(config.R2USD_ADDRESS, config.ROUTER_R2USD_TO_USDC, amountWei, wallet, 6);
     logger.swap(`Mulai swap R2USD → USDC sebesar ${amount} token...`);
-    // Slippage: minDy = amount * slippage
-    const minDy = ethers.parseUnits((parseFloat(amount) * slippage).toFixed(6), 6);
-    const methodId = "0x3df02124";
-    const data = ethers.concat([
-      methodId,
-      ethers.AbiCoder.defaultAbiCoder().encode(
-        ["int128", "int128", "uint256", "uint256"],
-        [0, 1, amountWei, minDy]
-      ),
-    ]);
-    const tx = await wallet.sendTransaction({
-      to: config.ROUTER_R2USD_TO_USDC,
-      data: data,
-      gasLimit: 500000
-    });
+    // Slippage: minOut = amount * (1 - slippage)
+    const minOut = ethers.parseUnits((parseFloat(amount) * (1 - slippage)).toFixed(6), 6);
+
+    // Gantilah method dan data sesuai kebutuhan router Anda. Jika router Anda mendukung UniswapV2:
+    const path = [config.R2USD_ADDRESS, config.USDC_ADDRESS];
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+    const router = new ethers.Contract(config.ROUTER_R2USD_TO_USDC, ROUTER_ABI, wallet);
+    const tx = await router.swapExactTokensForTokens(
+      amountWei,
+      minOut,
+      path,
+      wallet.address,
+      deadline
+    );
     await tx.wait();
     logger.swapSuccess(`Swap selesai: ${explorerLink(tx.hash)}`);
   }
@@ -264,7 +268,7 @@ async function addLpSepoliaR2(amount) {
 async function runSwapBolakBalik(times, fn, desc, minDelay, maxDelay) {
   let isFirstDirection = true;
   for (let i = 1; i <= times; i++) {
-    const amount = getRandomAmount();
+    let amount = getRandomAmount();
     logger.step(`[${desc}] #${i} | Jumlah: ${amount} | Arah: ${isFirstDirection ? 'A→B' : 'B→A'}`);
     try {
       await fn(isFirstDirection, amount);
@@ -281,7 +285,7 @@ async function runSwapBolakBalik(times, fn, desc, minDelay, maxDelay) {
 }
 async function runAction(times, fn, desc, minDelay, maxDelay) {
   for (let i = 1; i <= times; i++) {
-    const amount = getRandomAmount();
+    let amount = getRandomAmount();
     logger.step(`[${desc}] #${i} | Jumlah: ${amount}`);
     try {
       await fn(amount);
