@@ -37,7 +37,7 @@ const logger = {
 // Konfigurasi Jaringan
 const SEPOLIA_R2_CONFIG = {
   RPC_URL: "https://ethereum-sepolia-rpc.publicnode.com/",
-  R2_ADDRESS: process.env.R2_ADDRESS,
+  R2_ADDRESS: "0x8BEbFCBe5468F146533C182dF3DFbF5ff9BE00E2",
   USDC_ADDRESS: "0x8BEbFCBe5468F146533C182dF3DFbF5ff9BE00E2",
   ROUTER_ADDRESS: "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3",
   
