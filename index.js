@@ -100,7 +100,7 @@ function getRandomAmount(min = 1, max = 3) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function getRandomSlippage(min = 0.96, max = 0.97) {
+function getRandomSlippage(min = 0.1, max = 0.2) {
   return (Math.random() * (max - min) + min);
 }
 
