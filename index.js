@@ -74,7 +74,7 @@ const STAKING_ABI = [
 
 // Utils
 function getFixedSlippage() {
-  return 0.97;
+  return 0.05;
 }
 
 function getRandomAmount(min = 1, max = 3) {
@@ -82,7 +82,7 @@ function getRandomAmount(min = 1, max = 3) {
 }
 
 function getRandomDelay(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+  return Math.floor(Math.random() * (max - min + 0.05)) + min;
 }
 
 function explorerLink(txHash) {
