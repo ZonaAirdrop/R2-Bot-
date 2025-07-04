@@ -110,7 +110,7 @@ async function swapTokens(isUsdcToR2, amount) {
 
   const decimals = isUsdcToR2 ? 6 : 18;
   const amountIn = ethers.parseUnits(amount.toString(), decimals);
-  const slippagePercent = 0.97;
+  const slippagePercent = 1;
   const amountOutMin = amountIn * BigInt(100 - slippagePercent) / 100n;
 
   await ensureApproval(path[0], CONFIG.CONTRACTS.ROUTER, amountIn, wallet, decimals);
