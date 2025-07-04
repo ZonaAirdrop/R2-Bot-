@@ -107,11 +107,11 @@ const STAKING_ABI = [
 ];
 
 // Helper Functions
-function getRandomAmount(min = 5, max = 10) {
+function getRandomAmount(min = 1, max = 2) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function getRandomSlippage(min = 0.5, max = 1.5) {
+function getRandomSlippage(min = 0.5, max = 1) {
   return 1 - (Math.random() * (max - min) + min) / 100;
 }
 
