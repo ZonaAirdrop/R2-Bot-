@@ -95,7 +95,7 @@ const R2USD_USDC_SEPOLIA_SETTINGS = {
 
 // Selalu return 0.00001 (bukan random)
 function getRandomAmount() {
-  return 0.000001;
+  return 0.00001;
 }
 function getRandomDelay(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
