@@ -98,17 +98,9 @@ const ROUTER_ABI = [
   }
 ];
 
-// New staking ABI with method 0x1a5f0f00
+// Staking ABI dengan method selector 0x1a5f0f00
 const STAKING_ABI = [
-  {
-    "inputs": [
-      {"internalType":"uint256","name":"amount","type":"uint256"}
-    ],
-    "name": "stake",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  }
+  "function stake(uint256 amount) external"
 ];
 
 // Utility functions
@@ -207,20 +199,37 @@ async function stakeBtcToR2Wbtc(amount) {
   const config = BTC_STAKING_CONFIG;
   const provider = new ethers.JsonRpcProvider(config.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-  const stakingRouter = new ethers.Contract(config.ROUTER_ADDRESS, STAKING_ABI, wallet);
   
-  // BTC has 8 decimals
+  // Check balance first
+  const btcContract = new ethers.Contract(config.BTC_ADDRESS, ERC20ABI, wallet);
+  const balance = await btcContract.balanceOf(wallet.address);
   const amountWei = ethers.parseUnits(amount.toString(), 8);
+  
+  if (BigInt(balance) < BigInt(amountWei)) {
+    logger.error(`Insufficient BTC balance. Balance: ${ethers.formatUnits(balance, 8)}, Required: ${amount}`);
+    return;
+  }
+  
+  logger.info(`BTC Balance: ${ethers.formatUnits(balance, 8)} BTC`);
   
   await ensureApproval(config.BTC_ADDRESS, config.ROUTER_ADDRESS, amountWei, wallet, 8);
   
   logger.stake(`Mulai stake BTC → R2WBTC sebesar ${amount} token...`);
   
-  // Using the staking method 0x1a5f0f00
-  const tx = await stakingRouter.stake(amountWei);
-  await tx.wait();
-  
-  logger.stakeSuccess(`Staking BTC selesai: ${explorerLink(tx.hash)}`);
+  try {
+    const stakingRouter = new ethers.Contract(config.ROUTER_ADDRESS, STAKING_ABI, wallet);
+    const tx = await stakingRouter.stake(amountWei);
+    await tx.wait();
+    logger.stakeSuccess(`Staking BTC selesai: ${explorerLink(tx.hash)}`);
+  } catch (error) {
+    logger.error(`Staking BTC failed: ${error.message}`);
+    // Try alternative method if main method fails
+    logger.loading("Trying alternative staking method...");
+    const stakingRouterAlt = new ethers.Contract(config.ROUTER_ADDRESS, ["function stake(uint256) external"], wallet);
+    const tx = await stakingRouterAlt.stake(amountWei);
+    await tx.wait();
+    logger.stakeSuccess(`Staking BTC selesai (alternative method): ${explorerLink(tx.hash)}`);
+  }
 }
 
 // New R2USD to SR2USD staking function
@@ -228,20 +237,37 @@ async function stakeR2UsdToSr2Usd(amount) {
   const config = R2USD_STAKING_CONFIG;
   const provider = new ethers.JsonRpcProvider(config.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-  const stakingRouter = new ethers.Contract(config.ROUTER_ADDRESS, STAKING_ABI, wallet);
   
-  // R2USD has 6 decimals
+  // Check balance first
+  const r2usdContract = new ethers.Contract(config.R2USD_ADDRESS, ERC20ABI, wallet);
+  const balance = await r2usdContract.balanceOf(wallet.address);
   const amountWei = ethers.parseUnits(amount.toString(), 6);
+  
+  if (BigInt(balance) < BigInt(amountWei)) {
+    logger.error(`Insufficient R2USD balance. Balance: ${ethers.formatUnits(balance, 6)}, Required: ${amount}`);
+    return;
+  }
+  
+  logger.info(`R2USD Balance: ${ethers.formatUnits(balance, 6)} R2USD`);
   
   await ensureApproval(config.R2USD_ADDRESS, config.ROUTER_ADDRESS, amountWei, wallet, 6);
   
   logger.stake(`Mulai stake R2USD → SR2USD sebesar ${amount} token...`);
   
-  // Using the staking method 0x1a5f0f00
-  const tx = await stakingRouter.stake(amountWei);
-  await tx.wait();
-  
-  logger.stakeSuccess(`Staking R2USD selesai: ${explorerLink(tx.hash)}`);
+  try {
+    const stakingRouter = new ethers.Contract(config.ROUTER_ADDRESS, STAKING_ABI, wallet);
+    const tx = await stakingRouter.stake(amountWei);
+    await tx.wait();
+    logger.stakeSuccess(`Staking R2USD selesai: ${explorerLink(tx.hash)}`);
+  } catch (error) {
+    logger.error(`Staking R2USD failed: ${error.message}`);
+    // Try alternative method if main method fails
+    logger.loading("Trying alternative staking method...");
+    const stakingRouterAlt = new ethers.Contract(config.ROUTER_ADDRESS, ["function stake(uint256) external"], wallet);
+    const tx = await stakingRouterAlt.stake(amountWei);
+    await tx.wait();
+    logger.stakeSuccess(`Staking R2USD selesai (alternative method): ${explorerLink(tx.hash)}`);
+  }
 }
 
 // Utility for running swap & LP bolak-balik
