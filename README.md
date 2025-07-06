@@ -40,7 +40,7 @@ cd R2-Bot-
 ### 📦 2. Install Dependencies
 
 ```bash
-npm install dotenv ethers prompt-sync
+npm install
 ```
 
 ### 📝 3. Create and Configure the `.env` File
