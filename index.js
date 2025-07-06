@@ -10,6 +10,8 @@ const colors = {
   red: '\x1b[31m',
   white: '\x1b[37m',
   bold: '\x1b[1m',
+  blue: '\x1b[34m',
+  magenta: '\x1b[35m'
 };
 
 const logger = {
@@ -21,10 +23,10 @@ const logger = {
   step: (msg) => console.log(`${colors.white}[➤] ${msg}${colors.reset}`),
   swap: (msg) => console.log(`${colors.cyan}[↪️] ${msg}${colors.reset}`),
   swapSuccess: (msg) => console.log(`${colors.green}[✅] ${msg}${colors.reset}`),
-  liquidity: (msg) => console.log(`${colors.cyan}[↪️] ${msg}${colors.reset}`),
+  liquidity: (msg) => console.log(`${colors.cyan}[💧] ${msg}${colors.reset}`),
   liquiditySuccess: (msg) => console.log(`${colors.green}[✅] ${msg}${colors.reset}`),
-  stake: (msg) => console.log(`${colors.cyan}[🔒] ${msg}${colors.reset}`),
-  stakeSuccess: (msg) => console.log(`${colors.green}[✅] ${msg}${colors.reset}`),
+  balance: (msg) => console.log(`${colors.blue}[💰] ${msg}${colors.reset}`),
+  block: (msg) => console.log(`${colors.magenta}[📦] ${msg}${colors.reset}`),
   banner: () => {
     console.log(`${colors.cyan}${colors.bold}`);
     console.log('-------------------------------------------------');
@@ -32,9 +34,14 @@ const logger = {
     console.log('-------------------------------------------------');
     console.log(`${colors.reset}\n`);
   },
+  separator: (title) => {
+    console.log(`${colors.yellow}${'='.repeat(50)}`);
+    console.log(`${colors.yellow}${colors.bold} ${title} ${colors.reset}`);
+    console.log(`${colors.yellow}${'='.repeat(50)}${colors.reset}`);
+  }
 };
 
-// Configuration for R2 to USDC swaps and liquidity (keeping unchanged)
+// Configuration untuk R2 to USDC swaps dan liquidity
 const SEPOLIA_R2_CONFIG = {
   RPC_URL: process.env.RPC_URL,
   R2_ADDRESS: process.env.R2_ADDRESS,
@@ -42,24 +49,12 @@ const SEPOLIA_R2_CONFIG = {
   ROUTER_ADDRESS: "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3"
 };
 
-// New staking configurations
-const BTC_STAKING_CONFIG = {
-  RPC_URL: process.env.RPC_URL,
-  BTC_ADDRESS: "0x4f5b54d4AF2568cefafA73bB062e5d734b55AA05",
-  ROUTER_ADDRESS: "0x23b2615d783E16F14B62EfA125306c7c69B4941A"
-};
-
-const R2USD_STAKING_CONFIG = {
-  RPC_URL: process.env.RPC_URL,
-  R2USD_ADDRESS: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",
-  ROUTER_ADDRESS: "0x006CbF409CA275bA022111dB32BDAE054a97d488"
-};
-
 const ERC20ABI = [
   "function decimals() view returns (uint8)",
   "function balanceOf(address owner) view returns (uint256)",
   "function approve(address spender, uint256 amount) returns (bool)",
-  "function allowance(address owner, address spender) view returns (uint256)"
+  "function allowance(address owner, address spender) view returns (uint256)",
+  "function transfer(address to, uint256 amount) returns (bool)"
 ];
 
 const ROUTER_ABI = [
@@ -98,17 +93,6 @@ const ROUTER_ABI = [
   }
 ];
 
-// Staking ABI dengan method selector 0x1a5f0f00
-const STAKING_ABI = [
-  {
-    "inputs": [{"internalType": "uint256", "name": "amount", "type": "uint256"}],
-    "name": "stake",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  }
-];
-
 // Utility functions
 function getRandomAmount() {
   return 1;
@@ -122,6 +106,33 @@ function explorerLink(txHash) {
   return `https://sepolia.etherscan.io/tx/${txHash}`;
 }
 
+async function displayBalances(provider, wallet) {
+  try {
+    const config = SEPOLIA_R2_CONFIG;
+    const currentBlock = await provider.getBlockNumber();
+    
+    logger.block(`Current Block: ${currentBlock}`);
+    
+    // Get ETH balance
+    const ethBalance = await provider.getBalance(wallet.address);
+    logger.balance(`ETH Balance: ${ethers.formatEther(ethBalance)} ETH`);
+    
+    // Get R2 balance
+    const r2Contract = new ethers.Contract(config.R2_ADDRESS, ERC20ABI, provider);
+    const r2Balance = await r2Contract.balanceOf(wallet.address);
+    logger.balance(`R2 Balance: ${ethers.formatUnits(r2Balance, 18)} R2`);
+    
+    // Get USDC balance
+    const usdcContract = new ethers.Contract(config.USDC_ADDRESS, ERC20ABI, provider);
+    const usdcBalance = await usdcContract.balanceOf(wallet.address);
+    logger.balance(`USDC Balance: ${ethers.formatUnits(usdcBalance, 6)} USDC`);
+    
+    console.log('');
+  } catch (error) {
+    logger.error(`Error getting balances: ${error.message}`);
+  }
+}
+
 async function ensureApproval(tokenAddress, spender, amount, wallet, decimals) {
   const tokenContract = new ethers.Contract(tokenAddress, ERC20ABI, wallet);
   let allowance = await tokenContract.allowance(wallet.address, spender);
@@ -133,12 +144,16 @@ async function ensureApproval(tokenAddress, spender, amount, wallet, decimals) {
   }
 }
 
-// Keep existing R2 to USDC swap function unchanged
 async function swapSepoliaR2(isUsdcToR2, amount) {
+  logger.separator("SWAP SECTION");
+  
   const config = SEPOLIA_R2_CONFIG;
   const provider = new ethers.JsonRpcProvider(config.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
   const router = new ethers.Contract(config.ROUTER_ADDRESS, ROUTER_ABI, wallet);
+
+  // Display balances before swap
+  await displayBalances(provider, wallet);
 
   if (isUsdcToR2) {
     const amountWei = ethers.parseUnits(amount.toString(), 6);
@@ -171,14 +186,25 @@ async function swapSepoliaR2(isUsdcToR2, amount) {
     await tx.wait();
     logger.swapSuccess(`Swap selesai: ${explorerLink(tx.hash)}`);
   }
+
+  // Display balances after swap
+  logger.info("Balance setelah swap:");
+  await displayBalances(provider, wallet);
+  
+  logger.separator("END SWAP SECTION");
 }
 
-// Keep existing R2 to USDC liquidity function unchanged
 async function addLpSepoliaR2(amount) {
+  logger.separator("ADD LIQUIDITY SECTION");
+  
   const config = SEPOLIA_R2_CONFIG;
   const provider = new ethers.JsonRpcProvider(config.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
   const router = new ethers.Contract(config.ROUTER_ADDRESS, ROUTER_ABI, wallet);
+  
+  // Display balances before add liquidity
+  await displayBalances(provider, wallet);
+  
   const amountUsdc = ethers.parseUnits(amount.toString(), 6);
   const amountR2 = ethers.parseUnits(amount.toString(), 18);
 
@@ -198,100 +224,19 @@ async function addLpSepoliaR2(amount) {
   );
   await tx.wait();
   logger.liquiditySuccess(`Add Liquidity selesai: ${explorerLink(tx.hash)}`);
+
+  // Display balances after add liquidity
+  logger.info("Balance setelah add liquidity:");
+  await displayBalances(provider, wallet);
+  
+  logger.separator("END ADD LIQUIDITY SECTION");
 }
 
-// New BTC to R2WBTC staking function
-async function stakeBtcToR2Wbtc(amount) {
-  const config = BTC_STAKING_CONFIG;
-  const provider = new ethers.JsonRpcProvider(config.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-  
-  // Check balance first
-  const btcContract = new ethers.Contract(config.BTC_ADDRESS, ERC20ABI, wallet);
-  const balance = await btcContract.balanceOf(wallet.address);
-  const amountWei = ethers.parseUnits(amount.toString(), 8);
-  
-  if (BigInt(balance) < BigInt(amountWei)) {
-    logger.error(`Insufficient BTC balance. Balance: ${ethers.formatUnits(balance, 8)}, Required: ${amount}`);
-    return;
-  }
-  
-  logger.info(`BTC Balance: ${ethers.formatUnits(balance, 8)} BTC`);
-  
-  await ensureApproval(config.BTC_ADDRESS, config.ROUTER_ADDRESS, amountWei, wallet, 8);
-  
-  logger.stake(`Mulai stake BTC → R2WBTC sebesar ${amount} token...`);
-  
-  try {
-    // Method 1: Try with selector 0x1a5f0f00 directly
-    const data = "0x1a5f0f00" + amountWei.toString(16).padStart(64, '0');
-    const tx = await wallet.sendTransaction({
-      to: config.ROUTER_ADDRESS,
-      data: data,
-      gasLimit: 300000
-    });
-    await tx.wait();
-    logger.stakeSuccess(`Staking BTC selesai: ${explorerLink(tx.hash)}`);
-  } catch (error) {
-    logger.error(`Staking BTC failed: ${error.message}`);
-    // Try alternative method with standard ABI
-    logger.loading("Trying alternative staking method...");
-    const stakingRouter = new ethers.Contract(config.ROUTER_ADDRESS, STAKING_ABI, wallet);
-    const tx = await stakingRouter.stake(amountWei);
-    await tx.wait();
-    logger.stakeSuccess(`Staking BTC selesai (alternative method): ${explorerLink(tx.hash)}`);
-  }
-}
-
-// New R2USD to SR2USD staking function
-async function stakeR2UsdToSr2Usd(amount) {
-  const config = R2USD_STAKING_CONFIG;
-  const provider = new ethers.JsonRpcProvider(config.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-  
-  // Check balance first
-  const r2usdContract = new ethers.Contract(config.R2USD_ADDRESS, ERC20ABI, wallet);
-  const balance = await r2usdContract.balanceOf(wallet.address);
-  const amountWei = ethers.parseUnits(amount.toString(), 6);
-  
-  if (BigInt(balance) < BigInt(amountWei)) {
-    logger.error(`Insufficient R2USD balance. Balance: ${ethers.formatUnits(balance, 6)}, Required: ${amount}`);
-    return;
-  }
-  
-  logger.info(`R2USD Balance: ${ethers.formatUnits(balance, 6)} R2USD`);
-  
-  await ensureApproval(config.R2USD_ADDRESS, config.ROUTER_ADDRESS, amountWei, wallet, 6);
-  
-  logger.stake(`Mulai stake R2USD → SR2USD sebesar ${amount} token...`);
-  
-  try {
-    // Method 1: Try with selector 0x1a5f0f00 directly
-    const data = "0x1a5f0f00" + amountWei.toString(16).padStart(64, '0');
-    const tx = await wallet.sendTransaction({
-      to: config.ROUTER_ADDRESS,
-      data: data,
-      gasLimit: 300000
-    });
-    await tx.wait();
-    logger.stakeSuccess(`Staking R2USD selesai: ${explorerLink(tx.hash)}`);
-  } catch (error) {
-    logger.error(`Staking R2USD failed: ${error.message}`);
-    // Try alternative method with standard ABI
-    logger.loading("Trying alternative staking method...");
-    const stakingRouter = new ethers.Contract(config.ROUTER_ADDRESS, STAKING_ABI, wallet);
-    const tx = await stakingRouter.stake(amountWei);
-    await tx.wait();
-    logger.stakeSuccess(`Staking R2USD selesai (alternative method): ${explorerLink(tx.hash)}`);
-  }
-}
-
-// Utility for running swap & LP bolak-balik
 async function runSwapBolakBalik(times, fn, desc, minDelay, maxDelay) {
   let isFirstDirection = true;
   for (let i = 1; i <= times; i++) {
     let amount = getRandomAmount();
-    logger.step(`[${desc}] #${i} | Jumlah: ${amount} | Arah: ${isFirstDirection ? 'A→B' : 'B→A'}`);
+    logger.step(`[${desc}] #${i} | Jumlah: ${amount} | Arah: ${isFirstDirection ? 'USDC→R2' : 'R2→USDC'}`);
     try {
       await fn(isFirstDirection, amount);
     } catch (e) {
@@ -342,8 +287,6 @@ async function mainLoop() {
   logger.banner();
 
   logger.info("Please input your bot parameters.");
-  const stakeBtcTimes = parseInt(prompt("How many BTC to R2WBTC staking actions? "));
-  const stakeR2UsdTimes = parseInt(prompt("How many R2USD to SR2USD staking actions? "));
   const swapSepoliaR2Times = parseInt(prompt("How many bidirectional swaps USDC <-> R2 on Sepolia R2? "));
   const addLpSepoliaR2Times = parseInt(prompt("How many add liquidity actions on Sepolia R2? "));
   const minDelay = parseInt(prompt("Minimum delay between actions (ms): "));
@@ -351,31 +294,9 @@ async function mainLoop() {
   const delay24h = 24 * 60 * 60;
 
   while (true) {
-    logger.info("--- Starting staking, swap & LP sequence ---");
+    logger.info("--- Starting swap & LP sequence ---");
     
-    // BTC to R2WBTC staking
-    if (stakeBtcTimes > 0) {
-      await runAction(
-        stakeBtcTimes,
-        stakeBtcToR2Wbtc,
-        "BTC to R2WBTC Staking",
-        minDelay,
-        maxDelay
-      );
-    }
-    
-    // R2USD to SR2USD staking
-    if (stakeR2UsdTimes > 0) {
-      await runAction(
-        stakeR2UsdTimes,
-        stakeR2UsdToSr2Usd,
-        "R2USD to SR2USD Staking",
-        minDelay,
-        maxDelay
-      );
-    }
-    
-    // Existing R2 to USDC swap (keeping unchanged)
+    // R2 to USDC swap
     if (swapSepoliaR2Times > 0) {
       await runSwapBolakBalik(
         swapSepoliaR2Times,
@@ -386,7 +307,7 @@ async function mainLoop() {
       );
     }
     
-    // Existing R2 to USDC liquidity (keeping unchanged)
+    // R2 to USDC liquidity
     if (addLpSepoliaR2Times > 0) {
       await runAction(
         addLpSepoliaR2Times,
