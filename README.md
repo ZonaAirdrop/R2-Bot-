@@ -119,23 +119,6 @@ When prompted, enter:
 > **Always prioritize the security of your private key and RPC endpoints.**
 > This bot interacts with blockchain networks and performs automated transactions, so improper handling of sensitive credentials can lead to irreversible asset loss.
 
----
-
-### ⚠️ Best Practices
-
-```
-🔒 1. Never share your `.env` file or private key with anyone.
-🔒 2. Always use a testnet wallet (e.g., Sepolia) when testing this bot.
-🔒 3. Keep your `.env` file out of version control by adding it to `.gitignore`.
-🔒 4. Use proxy or VPN if necessary, especially when using public RPCs.
-🔒 5. Rotate or regenerate private keys periodically to reduce exposure risk.
-🔒 6. Double-check contract addresses and RPC endpoints before deployment.
-🔒 7. Use this tool only on trusted environments (your local device or secure VPS).
-🔒 8. Monitor your token balances regularly during bot operations.
-```
-
----
-
 ### 🚫 Disclaimer
 
 This software is provided for **educational and testing purposes only**.
