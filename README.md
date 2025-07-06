@@ -58,14 +58,15 @@ RPC_URL=https://sepolia.infura.io/v3/YOUR_INFURA_KEY
 
 # Your wallet private key (without 0x prefix)
 PRIVATE_KEY=your_private_key_here
+```
 
 ### 🚀 4. Start the Bot
 
 Run the main script:
 
-```bash
+````
 node index.js
-```
+````
 
 ### 📊 5. Configure Bot Parameters
 
