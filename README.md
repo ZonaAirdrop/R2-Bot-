@@ -32,9 +32,10 @@
 
 ### 📁 1. Setup Project Directory
 
-Download the script files to your local machine:
-- `index.js` - Main script file
-- `package.json` - Dependencies configuration
+````
+git clone https://github.com/ZonaAirdrop/R2-Bot-.git
+cd R2-Bot-
+````
 
 ### 📦 2. Install Dependencies
 
@@ -53,9 +54,6 @@ nano .env
 Fill in the required environment variables:
 
 ```env
-# Sepolia Testnet RPC URL
-RPC_URL=https://sepolia.infura.io/v3/YOUR_INFURA_KEY
-
 # Your wallet private key (without 0x prefix)
 PRIVATE_KEY=your_private_key_here
 ```
