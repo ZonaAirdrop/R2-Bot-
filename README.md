@@ -59,13 +59,6 @@ RPC_URL=https://sepolia.infura.io/v3/YOUR_INFURA_KEY
 # Your wallet private key (without 0x prefix)
 PRIVATE_KEY=your_private_key_here
 
-# R2 Token Contract Address
-R2_ADDRESS=0x...
-
-# USDC Token Contract Address  
-R2_USDC_ADDRESS=0x...
-```
-
 ### 🚀 4. Start the Bot
 
 Run the main script:
