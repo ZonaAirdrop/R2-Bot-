@@ -1,84 +1,126 @@
-📦 Full Feature Overview – R2-Bot
+# 📦 R2 Final zonaairdrop - DeFi Automation Bot
 
-📦 1. Auto Faucet Claim
-    → Automatically claims R2/USD tokens from a testnet faucet or smart contract.
+## 📦 Feature Overview
 
-📦 2. Wallet Generator
-    → Initializes an EVM wallet from a private key and connects to the selected RPC.
+📦 1. **Auto Balance Checker**
+    → Fetches and displays real-time ETH, R2, and USDC token balances with proper formatting and current block number.
 
-📦 3. Auto Balance Checker
-    → Fetches and displays the ETH/token balance of the wallet with proper formatting.
+📦 2. **Auto Swap Transactions**
+    → Executes automatic bidirectional swaps between R2 and USDC tokens using Uniswap-compatible router contracts with visual separators.
 
-📦 4. Auto Swap Transactions
-    → Executes automatic swaps between tokens (e.g., R2 <=> USDC) using smart contracts.
+📦 3. **Auto Add Liquidity**
+    → Automatically adds liquidity to R2-USDC pool with approval handling and transaction confirmation with enhanced UI display.
 
-📦 5. Multi-Wallet Looping
-    → Supports multiple wallets and loops through them one by one for batch operations.
+📦 4. **Wallet Integration**
+    → Initializes EVM wallet from private key and connects to Sepolia testnet RPC with secure environment variable management.
 
-📦 6. Real-Time Logging
-    → Provides status, success, and error logs with color-coded messages and timestamps.
+📦 5. **Real-Time Logging**
+    → Provides color-coded status, success, and error logs with timestamps, icons, and visual section separators.
 
-📦 7. Proxy & RPC Customization
-    → Supports proxy configuration (optional) and custom RPC endpoints via `.env`.
+📦 6. **Continuous Farming Mode**
+    → Runs in endless loop mode with 24-hour cycles for recurring swap and liquidity operations.
 
-📦 8. Continuous Farming Mode
-    → Can run in an endless loop mode for recurring farming or claiming tasks.
+📦 7. **Enhanced UI Display**
+    → Features visual separators (garis atas dan bawah) for swap and add liquidity sections with balance tracking before and after operations.
 
-
-## 🚀 How to Run `R2-Bot` (Step-by-Step)
-
-These are the complete and separated commands to run the bot from the [ZonaAirdrop/R2-Bot](https://github.com/ZonaAirdrop/R2-Bot-) repository (assuming you have access to it):
+📦 8. **Error Handling & Approval**
+    → Automatic token approval handling and comprehensive error management for failed transactions.
 
 ---
 
-### 🌐 1. Clone the Repository
+## 🚀 How to Run `R2 Final zonaairdrop` (Step-by-Step)
+
+### 📁 1. Setup Project Directory
+
+Download the script files to your local machine:
+- `index.js` - Main script file
+- `package.json` - Dependencies configuration
+
+### 📦 2. Install Dependencies
 
 ```bash
-git clone https://github.com/ZonaAirdrop/R2-Bot-.git
+npm install dotenv ethers prompt-sync
 ```
 
----
+### 📝 3. Create and Configure the `.env` File
 
-### 📁 2. Navigate into the Project Directory
-
-```bash
-cd R2-Bot-
-```
-
----
-
-### 📦 3. Install Dependencies
-
-```bash
-npm install
-```
-
----
-
-### 📝 4. Create and Configure the `.env` File
-
-If a `.env` file is not present, create one:
+Create a `.env` file in your project directory:
 
 ```bash
 nano .env
 ```
 
-Then open and fill in the required environment variables:
+Fill in the required environment variables:
 
 ```env
-PRIVATE_KEY=0x...         # Replace with your actual private key
+# Sepolia Testnet RPC URL
+RPC_URL=https://sepolia.infura.io/v3/YOUR_INFURA_KEY
+
+# Your wallet private key (without 0x prefix)
+PRIVATE_KEY=your_private_key_here
+
+# R2 Token Contract Address
+R2_ADDRESS=0x...
+
+# USDC Token Contract Address  
+R2_USDC_ADDRESS=0x...
 ```
+
+### 🚀 4. Start the Bot
+
+Run the main script:
+
+```bash
+node index.js
+```
+
+### 📊 5. Configure Bot Parameters
+
+When prompted, enter:
+- Number of bidirectional swaps (USDC ↔️ R2)
+- Number of add liquidity actions
+- Minimum delay between actions (milliseconds)
+- Maximum delay between actions (milliseconds)
 
 ---
 
-### 🚀 5. Start the Bot
+## 💡 Features in Action
 
-You can usually start the bot with:
+### 🔄 Swap Operations
+```
+==================================================
+ SWAP SECTION 
+==================================================
+[📦] Current Block: 12345678
+[💰] ETH Balance: 0.1234 ETH
+[💰] R2 Balance: 1000.0 R2
+[💰] USDC Balance: 500.0 USDC
 
-```bash
-npm start
+[↪️] Mulai swap USDC → R2 sebesar 1 token...
+[✅] Swap selesai: https://sepolia.etherscan.io/tx/0x...
+==================================================
+ END SWAP SECTION 
+==================================================
 ```
 
+### 💧 Add Liquidity Operations
+```
+==================================================
+ ADD LIQUIDITY SECTION 
+==================================================
+[📦] Current Block: 12345679
+[💰] ETH Balance: 0.1230 ETH
+[💰] R2 Balance: 999.0 R2
+[💰] USDC Balance: 499.0 USDC
+
+[💧] Mulai add liquidity USDC-R2 sebesar 1 token...
+[✅] Add Liquidity selesai: https://sepolia.etherscan.io/tx/0x...
+==================================================
+ END ADD LIQUIDITY SECTION 
+==================================================
+```
+
+---
 
 ## 🔐 Security Notice
 
@@ -91,12 +133,13 @@ npm start
 
 ```
 🔒 1. Never share your `.env` file or private key with anyone.
-🔒 2. Always use a testnet wallet (e.g., Sepolia, Goerli) when testing this bot.
+🔒 2. Always use a testnet wallet (e.g., Sepolia) when testing this bot.
 🔒 3. Keep your `.env` file out of version control by adding it to `.gitignore`.
-🔒 4. Use proxy or VPN if necessary, especially when using public RPCs or handling multiple wallets.
+🔒 4. Use proxy or VPN if necessary, especially when using public RPCs.
 🔒 5. Rotate or regenerate private keys periodically to reduce exposure risk.
 🔒 6. Double-check contract addresses and RPC endpoints before deployment.
-🔒 7. Use this tool only on trusted environments (your local device or a secure VPS).
+🔒 7. Use this tool only on trusted environments (your local device or secure VPS).
+🔒 8. Monitor your token balances regularly during bot operations.
 ```
 
 ---
@@ -108,7 +151,18 @@ The maintainers are **not responsible** for any loss, damage, or misuse caused b
 
 > By using this bot, you agree that you understand the risks associated with blockchain automation, including but not limited to transaction fees, delays, and unexpected behavior due to network congestion or smart contract changes.
 
-📝 Note: 
-- Token Discord Optional it's only for Automatic Claim Faucet. Not filling it is no problem 
+---
 
-For Get Update Join (Optional) https://t.me/ZonaAirdr0p
+## 🛠️ Technical Details
+
+- **Network**: Sepolia Testnet
+- **Router Contract**: 0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3
+- **Token Standards**: ERC20 (R2: 18 decimals, USDC: 6 decimals)
+- **Runtime**: Node.js with ethers.js v6
+- **Architecture**: CommonJS modules for maximum compatibility
+
+---
+
+📝 **Note**: This bot focuses on R2-USDC swap and liquidity operations only. All staking functionality has been removed for stability and simplicity.
+
+For updates and support: https://t.me/ZonaAirdr0p
