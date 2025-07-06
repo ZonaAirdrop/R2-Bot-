@@ -100,7 +100,13 @@ const ROUTER_ABI = [
 
 // Staking ABI dengan method selector 0x1a5f0f00
 const STAKING_ABI = [
-  "function stake(uint256 amount) external"
+  {
+    "inputs": [{"internalType": "uint256", "name": "amount", "type": "uint256"}],
+    "name": "stake",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
 ];
 
 // Utility functions
@@ -217,16 +223,21 @@ async function stakeBtcToR2Wbtc(amount) {
   logger.stake(`Mulai stake BTC → R2WBTC sebesar ${amount} token...`);
   
   try {
-    const stakingRouter = new ethers.Contract(config.ROUTER_ADDRESS, STAKING_ABI, wallet);
-    const tx = await stakingRouter.stake(amountWei);
+    // Method 1: Try with selector 0x1a5f0f00 directly
+    const data = "0x1a5f0f00" + amountWei.toString(16).padStart(64, '0');
+    const tx = await wallet.sendTransaction({
+      to: config.ROUTER_ADDRESS,
+      data: data,
+      gasLimit: 300000
+    });
     await tx.wait();
     logger.stakeSuccess(`Staking BTC selesai: ${explorerLink(tx.hash)}`);
   } catch (error) {
     logger.error(`Staking BTC failed: ${error.message}`);
-    // Try alternative method if main method fails
+    // Try alternative method with standard ABI
     logger.loading("Trying alternative staking method...");
-    const stakingRouterAlt = new ethers.Contract(config.ROUTER_ADDRESS, ["function stake(uint256) external"], wallet);
-    const tx = await stakingRouterAlt.stake(amountWei);
+    const stakingRouter = new ethers.Contract(config.ROUTER_ADDRESS, STAKING_ABI, wallet);
+    const tx = await stakingRouter.stake(amountWei);
     await tx.wait();
     logger.stakeSuccess(`Staking BTC selesai (alternative method): ${explorerLink(tx.hash)}`);
   }
@@ -255,16 +266,21 @@ async function stakeR2UsdToSr2Usd(amount) {
   logger.stake(`Mulai stake R2USD → SR2USD sebesar ${amount} token...`);
   
   try {
-    const stakingRouter = new ethers.Contract(config.ROUTER_ADDRESS, STAKING_ABI, wallet);
-    const tx = await stakingRouter.stake(amountWei);
+    // Method 1: Try with selector 0x1a5f0f00 directly
+    const data = "0x1a5f0f00" + amountWei.toString(16).padStart(64, '0');
+    const tx = await wallet.sendTransaction({
+      to: config.ROUTER_ADDRESS,
+      data: data,
+      gasLimit: 300000
+    });
     await tx.wait();
     logger.stakeSuccess(`Staking R2USD selesai: ${explorerLink(tx.hash)}`);
   } catch (error) {
     logger.error(`Staking R2USD failed: ${error.message}`);
-    // Try alternative method if main method fails
+    // Try alternative method with standard ABI
     logger.loading("Trying alternative staking method...");
-    const stakingRouterAlt = new ethers.Contract(config.ROUTER_ADDRESS, ["function stake(uint256) external"], wallet);
-    const tx = await stakingRouterAlt.stake(amountWei);
+    const stakingRouter = new ethers.Contract(config.ROUTER_ADDRESS, STAKING_ABI, wallet);
+    const tx = await stakingRouter.stake(amountWei);
     await tx.wait();
     logger.stakeSuccess(`Staking R2USD selesai (alternative method): ${explorerLink(tx.hash)}`);
   }
