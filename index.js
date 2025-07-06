@@ -1,6 +1,6 @@
-import "dotenv/config";
-import { ethers } from "ethers";
-import promptSync from "prompt-sync";
+require("dotenv/config");
+const { ethers } = require("ethers");
+const promptSync = require("prompt-sync");
 
 const colors = {
   reset: '\x1b[0m',
@@ -23,6 +23,8 @@ const logger = {
   swapSuccess: (msg) => console.log(`${colors.green}[✅] ${msg}${colors.reset}`),
   liquidity: (msg) => console.log(`${colors.cyan}[↪️] ${msg}${colors.reset}`),
   liquiditySuccess: (msg) => console.log(`${colors.green}[✅] ${msg}${colors.reset}`),
+  stake: (msg) => console.log(`${colors.cyan}[🔒] ${msg}${colors.reset}`),
+  stakeSuccess: (msg) => console.log(`${colors.green}[✅] ${msg}${colors.reset}`),
   banner: () => {
     console.log(`${colors.cyan}${colors.bold}`);
     console.log('-------------------------------------------------');
@@ -32,25 +34,34 @@ const logger = {
   },
 };
 
-const SEPOLIA_CONFIG = {
-  RPC_URL: process.env.RPC_URL,
-  USDC_ADDRESS: process.env.USDC_ADDRESS,
-  R2USD_ADDRESS: process.env.R2USD_ADDRESS,
-  ROUTER_USDC_TO_R2USD: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",
-  ROUTER_R2USD_TO_USDC: "0x47d1B0623bB3E557bF8544C159c9ae51D091F8a2",
-};
+// Configuration for R2 to USDC swaps and liquidity (keeping unchanged)
 const SEPOLIA_R2_CONFIG = {
   RPC_URL: process.env.RPC_URL,
   R2_ADDRESS: process.env.R2_ADDRESS,
   USDC_ADDRESS: process.env.R2_USDC_ADDRESS,
   ROUTER_ADDRESS: "0xeE567Fe1712Faf6149d80dA1E6934E354124CfE3"
 };
+
+// New staking configurations
+const BTC_STAKING_CONFIG = {
+  RPC_URL: process.env.RPC_URL,
+  BTC_ADDRESS: "0x4f5b54d4AF2568cefafA73bB062e5d734b55AA05",
+  ROUTER_ADDRESS: "0x23b2615d783E16F14B62EfA125306c7c69B4941A"
+};
+
+const R2USD_STAKING_CONFIG = {
+  RPC_URL: process.env.RPC_URL,
+  R2USD_ADDRESS: "0x9e8FF356D35a2Da385C546d6Bf1D77ff85133365",
+  ROUTER_ADDRESS: "0x006CbF409CA275bA022111dB32BDAE054a97d488"
+};
+
 const ERC20ABI = [
   "function decimals() view returns (uint8)",
   "function balanceOf(address owner) view returns (uint256)",
   "function approve(address spender, uint256 amount) returns (bool)",
   "function allowance(address owner, address spender) view returns (uint256)"
 ];
+
 const ROUTER_ABI = [
   {
     "inputs": [
@@ -87,19 +98,28 @@ const ROUTER_ABI = [
   }
 ];
 
-// Setting khusus swap R2USD - USDC Sepolia
-const R2USD_USDC_SEPOLIA_SETTINGS = {
-  minSwap: 0.5,      // minimal swap R2USD/USDC Sepolia
-  slippage: 0.1        // slippage: 0.1% (0.001 = 0.1%)
-};
+// New staking ABI with method 0x1a5f0f00
+const STAKING_ABI = [
+  {
+    "inputs": [
+      {"internalType":"uint256","name":"amount","type":"uint256"}
+    ],
+    "name": "stake",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+];
 
-// Selalu return 0.00001 (bukan random)
+// Utility functions
 function getRandomAmount() {
   return 1;
 }
+
 function getRandomDelay(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+
 function explorerLink(txHash) {
   return `https://sepolia.etherscan.io/tx/${txHash}`;
 }
@@ -115,86 +135,7 @@ async function ensureApproval(tokenAddress, spender, amount, wallet, decimals) {
   }
 }
 
-// Bagian swapSepolia diubah agar minSwap & slippage bisa diatur
-async function swapSepolia(isUsdcToR2usd, amount) {
-  const config = SEPOLIA_CONFIG;
-  const { minSwap, slippage } = R2USD_USDC_SEPOLIA_SETTINGS;
-  const provider = new ethers.JsonRpcProvider(config.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-
-  if (amount < minSwap) {
-    logger.error(`Minimal swap adalah ${minSwap}, input: ${amount}`);
-    return;
-  }
-
-  if (isUsdcToR2usd) {
-    const amountWei = ethers.parseUnits(amount.toString(), 6);
-    await ensureApproval(config.USDC_ADDRESS, config.ROUTER_USDC_TO_R2USD, amountWei, wallet, 6);
-    logger.swap(`Mulai swap USDC → R2USD sebesar ${amount} token...`);
-    // Slippage: minOut = amount * (1 - slippage)
-    const minOut = ethers.parseUnits((parseFloat(amount) * (1 - slippage)).toFixed(6), 6);
-
-    // UniswapV2-style router
-    const path = [config.USDC_ADDRESS, config.R2USD_ADDRESS];
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-    const router = new ethers.Contract(config.ROUTER_USDC_TO_R2USD, ROUTER_ABI, wallet);
-    const tx = await router.swapExactTokensForTokens(
-      amountWei,
-      minOut,
-      path,
-      wallet.address,
-      deadline
-    );
-    await tx.wait();
-    logger.swapSuccess(`Swap selesai: ${explorerLink(tx.hash)}`);
-  } else {
-    const amountWei = ethers.parseUnits(amount.toString(), 6);
-    await ensureApproval(config.R2USD_ADDRESS, config.ROUTER_R2USD_TO_USDC, amountWei, wallet, 6);
-    logger.swap(`Mulai swap R2USD → USDC sebesar ${amount} token...`);
-    // Slippage: minOut = amount * (1 - slippage)
-    const minOut = ethers.parseUnits((parseFloat(amount) * (1 - slippage)).toFixed(6), 6);
-
-    const path = [config.R2USD_ADDRESS, config.USDC_ADDRESS];
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-    const router = new ethers.Contract(config.ROUTER_R2USD_TO_USDC, ROUTER_ABI, wallet);
-    const tx = await router.swapExactTokensForTokens(
-      amountWei,
-      minOut,
-      path,
-      wallet.address,
-      deadline
-    );
-    await tx.wait();
-    logger.swapSuccess(`Swap selesai: ${explorerLink(tx.hash)}`);
-  }
-}
-
-async function addLpR2Sepolia(amount) {
-  const config = SEPOLIA_CONFIG;
-  const provider = new ethers.JsonRpcProvider(config.RPC_URL);
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-  const router = new ethers.Contract(config.ROUTER_USDC_TO_R2USD, ROUTER_ABI, wallet);
-  const amountWei = ethers.parseUnits(amount.toString(), 6);
-
-  await ensureApproval(config.USDC_ADDRESS, config.ROUTER_USDC_TO_R2USD, amountWei, wallet, 6);
-  await ensureApproval(config.R2USD_ADDRESS, config.ROUTER_USDC_TO_R2USD, amountWei, wallet, 6);
-
-  const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-  logger.liquidity(`Mulai add liquidity USDC-R2USD sebesar ${amount} token...`);
-  const tx = await router.addLiquidity(
-    config.USDC_ADDRESS,
-    config.R2USD_ADDRESS,
-    amountWei,
-    amountWei,
-    0, 0,
-    wallet.address,
-    deadline
-  );
-  await tx.wait();
-  logger.liquiditySuccess(`Add Liquidity selesai: ${explorerLink(tx.hash)}`);
-}
-
-// BAGIAN DI BAWAH JANGAN DIUBAH - SUDAH WORK
+// Keep existing R2 to USDC swap function unchanged
 async function swapSepoliaR2(isUsdcToR2, amount) {
   const config = SEPOLIA_R2_CONFIG;
   const provider = new ethers.JsonRpcProvider(config.RPC_URL);
@@ -234,6 +175,7 @@ async function swapSepoliaR2(isUsdcToR2, amount) {
   }
 }
 
+// Keep existing R2 to USDC liquidity function unchanged
 async function addLpSepoliaR2(amount) {
   const config = SEPOLIA_R2_CONFIG;
   const provider = new ethers.JsonRpcProvider(config.RPC_URL);
@@ -260,6 +202,48 @@ async function addLpSepoliaR2(amount) {
   logger.liquiditySuccess(`Add Liquidity selesai: ${explorerLink(tx.hash)}`);
 }
 
+// New BTC to R2WBTC staking function
+async function stakeBtcToR2Wbtc(amount) {
+  const config = BTC_STAKING_CONFIG;
+  const provider = new ethers.JsonRpcProvider(config.RPC_URL);
+  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+  const stakingRouter = new ethers.Contract(config.ROUTER_ADDRESS, STAKING_ABI, wallet);
+  
+  // BTC has 8 decimals
+  const amountWei = ethers.parseUnits(amount.toString(), 8);
+  
+  await ensureApproval(config.BTC_ADDRESS, config.ROUTER_ADDRESS, amountWei, wallet, 8);
+  
+  logger.stake(`Mulai stake BTC → R2WBTC sebesar ${amount} token...`);
+  
+  // Using the staking method 0x1a5f0f00
+  const tx = await stakingRouter.stake(amountWei);
+  await tx.wait();
+  
+  logger.stakeSuccess(`Staking BTC selesai: ${explorerLink(tx.hash)}`);
+}
+
+// New R2USD to SR2USD staking function
+async function stakeR2UsdToSr2Usd(amount) {
+  const config = R2USD_STAKING_CONFIG;
+  const provider = new ethers.JsonRpcProvider(config.RPC_URL);
+  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+  const stakingRouter = new ethers.Contract(config.ROUTER_ADDRESS, STAKING_ABI, wallet);
+  
+  // R2USD has 6 decimals
+  const amountWei = ethers.parseUnits(amount.toString(), 6);
+  
+  await ensureApproval(config.R2USD_ADDRESS, config.ROUTER_ADDRESS, amountWei, wallet, 6);
+  
+  logger.stake(`Mulai stake R2USD → SR2USD sebesar ${amount} token...`);
+  
+  // Using the staking method 0x1a5f0f00
+  const tx = await stakingRouter.stake(amountWei);
+  await tx.wait();
+  
+  logger.stakeSuccess(`Staking R2USD selesai: ${explorerLink(tx.hash)}`);
+}
+
 // Utility for running swap & LP bolak-balik
 async function runSwapBolakBalik(times, fn, desc, minDelay, maxDelay) {
   let isFirstDirection = true;
@@ -279,6 +263,7 @@ async function runSwapBolakBalik(times, fn, desc, minDelay, maxDelay) {
     }
   }
 }
+
 async function runAction(times, fn, desc, minDelay, maxDelay) {
   for (let i = 1; i <= times; i++) {
     let amount = getRandomAmount();
@@ -295,6 +280,7 @@ async function runAction(times, fn, desc, minDelay, maxDelay) {
     }
   }
 }
+
 function countdown(seconds) {
   return new Promise(resolve => {
     const interval = setInterval(() => {
@@ -314,8 +300,8 @@ async function mainLoop() {
   logger.banner();
 
   logger.info("Please input your bot parameters.");
-  const swapR2SepoliaTimes = parseInt(prompt("How many bidirectional swaps USDC <-> R2USD on R2 Sepolia? "));
-  const addLpR2SepoliaTimes = parseInt(prompt("How many add liquidity actions on R2 Sepolia? "));
+  const stakeBtcTimes = parseInt(prompt("How many BTC to R2WBTC staking actions? "));
+  const stakeR2UsdTimes = parseInt(prompt("How many R2USD to SR2USD staking actions? "));
   const swapSepoliaR2Times = parseInt(prompt("How many bidirectional swaps USDC <-> R2 on Sepolia R2? "));
   const addLpSepoliaR2Times = parseInt(prompt("How many add liquidity actions on Sepolia R2? "));
   const minDelay = parseInt(prompt("Minimum delay between actions (ms): "));
@@ -323,45 +309,57 @@ async function mainLoop() {
   const delay24h = 24 * 60 * 60;
 
   while (true) {
-    logger.info("--- Starting R2 Sepolia swap & LP sequence ---");
-    await runSwapBolakBalik(
-      swapR2SepoliaTimes,
-      swapSepolia,
-      "Bidirectional Swap R2 Sepolia (USDC ↔️ R2USD)",
-      minDelay,
-      maxDelay
-    );
-    await runAction(
-      addLpR2SepoliaTimes,
-      addLpR2Sepolia,
-      "Add Liquidity R2 Sepolia",
-      minDelay,
-      maxDelay
-    );
-    logger.success("All swaps and add liquidity actions on R2 Sepolia completed.");
-
-    logger.info("--- Starting Sepolia R2 swap & LP sequence ---");
-    await runSwapBolakBalik(
-      swapSepoliaR2Times,
-      swapSepoliaR2,
-      "Bidirectional Swap Sepolia R2 (USDC ↔️ R2)",
-      minDelay,
-      maxDelay
-    );
-    await runAction(
-      addLpSepoliaR2Times,
-      addLpSepoliaR2,
-      "Add Liquidity Sepolia R2",
-      minDelay,
-      maxDelay
-    );
-    logger.success("All swaps and add liquidity actions on Sepolia R2 completed.");
-
-    logger.loading(`All tasks completed. Waiting 24 hours before next cycle...`);
+    logger.info("--- Starting staking, swap & LP sequence ---");
+    
+    // BTC to R2WBTC staking
+    if (stakeBtcTimes > 0) {
+      await runAction(
+        stakeBtcTimes,
+        stakeBtcToR2Wbtc,
+        "BTC to R2WBTC Staking",
+        minDelay,
+        maxDelay
+      );
+    }
+    
+    // R2USD to SR2USD staking
+    if (stakeR2UsdTimes > 0) {
+      await runAction(
+        stakeR2UsdTimes,
+        stakeR2UsdToSr2Usd,
+        "R2USD to SR2USD Staking",
+        minDelay,
+        maxDelay
+      );
+    }
+    
+    // Existing R2 to USDC swap (keeping unchanged)
+    if (swapSepoliaR2Times > 0) {
+      await runSwapBolakBalik(
+        swapSepoliaR2Times,
+        swapSepoliaR2,
+        "Bidirectional Swap Sepolia R2 (USDC ↔️ R2)",
+        minDelay,
+        maxDelay
+      );
+    }
+    
+    // Existing R2 to USDC liquidity (keeping unchanged)
+    if (addLpSepoliaR2Times > 0) {
+      await runAction(
+        addLpSepoliaR2Times,
+        addLpSepoliaR2,
+        "Add Liquidity Sepolia R2 (USDC-R2)",
+        minDelay,
+        maxDelay
+      );
+    }
+    
+    logger.success("Semua aktivitas selesai!");
+    logger.info(`Menunggu 24 jam untuk siklus berikutnya...`);
     await countdown(delay24h);
-    logger.banner();
-    logger.info("Starting the next cycle...");
   }
 }
 
-mainLoop();
+// Start the main loop
+mainLoop().catch(console.error);
