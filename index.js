@@ -95,7 +95,7 @@ const ROUTER_ABI = [
 
 // Utility functions
 function getRandomAmount() {
-  return 1;
+  return 50;
 }
 
 function getRandomDelay(min, max) {
